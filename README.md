@@ -249,3 +249,4 @@ This project is licensed under the MIT License.
 - File uploads are stored with UUID names to prevent conflicts
 - Submission metadata is stored as JSON for easy retrieval
 - Use the browser's developer tools to debug API calls
+# Startup-Analysis
