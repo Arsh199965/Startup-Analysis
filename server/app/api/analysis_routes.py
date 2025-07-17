@@ -130,7 +130,7 @@ def analyze_startup_with_langchain(startup_name: str, file_paths: List[str]) -> 
             all_text_content = all_text_content[:50000] + "\n[Content truncated due to length]"
             print("Content truncated due to length limitations")
         
-        # Create analysis prompt using ChatPromptTemplate
+        # Creat analysis prompt using ChatPromptTemplate
         analysis_prompt = ChatPromptTemplate.from_messages([
             ("system", """You are an expert venture capital analyst specializing in startup evaluation. 
             Analyze the provided startup documents thoroughly and provide a comprehensive analysis.
