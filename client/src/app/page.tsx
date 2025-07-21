@@ -80,25 +80,33 @@ export default function Home() {
 
   if (isSubmitted) {
     return (
-      <div className="min-h-screen gradient-bg-modern flex items-center justify-center p-4">
+      <div className="min-h-screen bg-black text-white flex items-center justify-center p-4 relative overflow-hidden">
+        {/* Animated background elements */}
+        <div className="absolute inset-0 bg-gradient-to-br from-gray-900 via-black to-gray-900"></div>
+        <div className="absolute inset-0">
+          <div className="absolute top-20 left-10 w-72 h-72 bg-green-600/10 rounded-full blur-3xl animate-pulse"></div>
+          <div className="absolute bottom-20 right-20 w-96 h-96 bg-blue-600/10 rounded-full blur-3xl animate-pulse delay-1000"></div>
+        </div>
+
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="text-center space-y-6 max-w-md mx-auto"
+          className="text-center space-y-6 max-w-md mx-auto relative z-10"
         >
           <motion.div
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
             transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
+            className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-r from-green-600 to-emerald-600 mb-6 shadow-lg shadow-green-500/25"
           >
-            <CheckCircle className="w-20 h-20 text-green-500 mx-auto mb-6" />
+            <CheckCircle className="w-12 h-12 text-white" />
           </motion.div>
 
           <motion.h1
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.4 }}
-            className="text-4xl font-bold text-white mb-4"
+            className="text-4xl font-bold bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent mb-4"
           >
             Submission Successful!
           </motion.h1>
@@ -107,7 +115,7 @@ export default function Home() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.6 }}
-            className="text-xl text-white/90 mb-8"
+            className="text-xl text-gray-300 mb-8 leading-relaxed"
           >
             Thank you for submitting your startup information. We'll review your
             materials and get back to you soon!
@@ -123,7 +131,7 @@ export default function Home() {
                 setIsSubmitted(false);
                 setFormData({ startupName: "", submitterName: "", files: [] });
               }}
-              className="bg-white text-blue-600 hover:bg-gray-100 px-8 py-3 text-lg"
+              className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-8 py-3 text-lg font-semibold shadow-lg shadow-blue-500/25 transition-all duration-300"
             >
               Submit Another Startup
             </Button>
@@ -134,42 +142,13 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen gradient-bg-modern relative overflow-hidden">
+    <div className="min-h-screen bg-black text-white relative overflow-hidden">
       {/* Animated background elements */}
-      <div className="absolute inset-0 overflow-hidden">
-        <motion.div
-          animate={{
-            rotate: 360,
-          }}
-          transition={{
-            duration: 20,
-            repeat: Infinity,
-            ease: "linear",
-          }}
-          className="absolute -top-20 -right-20 w-96 h-96 rounded-full bg-white/10"
-        />
-        <motion.div
-          animate={{
-            rotate: -360,
-          }}
-          transition={{
-            duration: 15,
-            repeat: Infinity,
-            ease: "linear",
-          }}
-          className="absolute -bottom-20 -left-20 w-96 h-96 rounded-full bg-white/10"
-        />
-        <motion.div
-          animate={{
-            y: [-20, 20, -20],
-          }}
-          transition={{
-            duration: 6,
-            repeat: Infinity,
-            ease: "easeInOut",
-          }}
-          className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-32 h-32 rounded-full bg-white/5"
-        />
+      <div className="absolute inset-0 bg-gradient-to-br from-gray-900 via-black to-gray-900"></div>
+      <div className="absolute inset-0">
+        <div className="absolute top-20 left-10 w-72 h-72 bg-blue-600/10 rounded-full blur-3xl animate-pulse"></div>
+        <div className="absolute top-40 right-20 w-96 h-96 bg-purple-600/10 rounded-full blur-3xl animate-pulse delay-1000"></div>
+        <div className="absolute bottom-20 left-1/3 w-80 h-80 bg-cyan-600/10 rounded-full blur-3xl animate-pulse delay-2000"></div>
       </div>
 
       <div className="relative z-10 container mx-auto px-4 py-12">
@@ -184,7 +163,7 @@ export default function Home() {
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
             transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
-            className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-white/20 mb-6"
+            className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-r from-blue-600 to-purple-600 mb-6 shadow-lg shadow-blue-500/25"
           >
             <Rocket className="w-10 h-10 text-white" />
           </motion.div>
@@ -193,7 +172,7 @@ export default function Home() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.4 }}
-            className="text-5xl md:text-7xl font-bold text-white mb-4 tracking-tight"
+            className="text-5xl md:text-7xl font-bold bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent mb-4 tracking-tight"
           >
             Our Big Company
           </motion.h1>
@@ -204,18 +183,18 @@ export default function Home() {
             transition={{ delay: 0.6 }}
             className="flex items-center justify-center gap-2 mb-6"
           >
-            <Sparkles className="w-6 h-6 text-yellow-300" />
-            <p className="text-xl md:text-2xl text-white/90 font-light">
+            <Sparkles className="w-6 h-6 text-yellow-400" />
+            <p className="text-xl md:text-2xl text-gray-300 font-light">
               Submit Your Startup for Review
             </p>
-            <Sparkles className="w-6 h-6 text-yellow-300" />
+            <Sparkles className="w-6 h-6 text-yellow-400" />
           </motion.div>
 
           <motion.p
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.8 }}
-            className="text-lg text-white/80 max-w-2xl mx-auto leading-relaxed"
+            className="text-lg text-gray-400 max-w-2xl mx-auto leading-relaxed"
           >
             Join the next generation of innovative startups. Share your vision,
             upload your materials, and let us help accelerate your journey to
@@ -230,7 +209,7 @@ export default function Home() {
           transition={{ delay: 1, duration: 0.8 }}
           className="max-w-2xl mx-auto"
         >
-          <div className="glass rounded-3xl p-8 md:p-12 shadow-2xl backdrop-blur-xl border border-white/20">
+          <div className="bg-gray-900/50 backdrop-blur-xl border border-gray-800 rounded-2xl p-8 md:p-12 shadow-2xl shadow-black/50">
             <form onSubmit={handleSubmit} className="space-y-8">
               {/* Startup Name */}
               <motion.div
@@ -243,7 +222,7 @@ export default function Home() {
                   htmlFor="startupName"
                   className="text-white text-lg font-medium flex items-center gap-2"
                 >
-                  <Building2 className="w-5 h-5" />
+                  <Building2 className="w-5 h-5 text-blue-400" />
                   Startup Name
                 </Label>
                 <Input
@@ -254,7 +233,7 @@ export default function Home() {
                   value={formData.startupName}
                   onChange={handleInputChange}
                   required
-                  className="h-14 text-lg bg-white/90 border-white/30 placeholder:text-gray-500 focus:bg-white focus:border-blue-400 transition-all duration-300"
+                  className="h-14 text-lg bg-gray-800/50 border-gray-700 text-white placeholder:text-gray-500 focus:bg-gray-800 focus:border-blue-500 transition-all duration-300"
                 />
               </motion.div>
 
@@ -269,7 +248,7 @@ export default function Home() {
                   htmlFor="submitterName"
                   className="text-white text-lg font-medium flex items-center gap-2"
                 >
-                  <User className="w-5 h-5" />
+                  <User className="w-5 h-5 text-purple-400" />
                   Your Name
                 </Label>
                 <Input
@@ -280,7 +259,7 @@ export default function Home() {
                   value={formData.submitterName}
                   onChange={handleInputChange}
                   required
-                  className="h-14 text-lg bg-white/90 border-white/30 placeholder:text-gray-500 focus:bg-white focus:border-blue-400 transition-all duration-300"
+                  className="h-14 text-lg bg-gray-800/50 border-gray-700 text-white placeholder:text-gray-500 focus:bg-gray-800 focus:border-purple-500 transition-all duration-300"
                 />
               </motion.div>
 
@@ -292,10 +271,10 @@ export default function Home() {
                 className="space-y-3"
               >
                 <Label className="text-white text-lg font-medium flex items-center gap-2">
-                  <FileText className="w-5 h-5" />
+                  <FileText className="w-5 h-5 text-green-400" />
                   Company Tear Sheet / Portfolio
                 </Label>
-                <div className="bg-white/90 rounded-xl p-1">
+                <div className="bg-gray-800/30 border border-gray-700 rounded-xl p-1 backdrop-blur-sm">
                   <FileUpload onFileSelect={handleFileSelect} />
                 </div>
               </motion.div>
@@ -314,7 +293,7 @@ export default function Home() {
                     !formData.startupName ||
                     !formData.submitterName
                   }
-                  className="w-full h-16 text-lg font-semibold bg-white text-blue-600 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 group"
+                  className="w-full h-16 text-lg font-semibold bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 group shadow-lg shadow-blue-500/25"
                 >
                   {isSubmitting ? (
                     <motion.div
@@ -324,7 +303,7 @@ export default function Home() {
                         repeat: Infinity,
                         ease: "linear",
                       }}
-                      className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full"
+                      className="w-6 h-6 border-2 border-white border-t-transparent rounded-full"
                     />
                   ) : (
                     <>
@@ -345,7 +324,7 @@ export default function Home() {
           transition={{ delay: 2 }}
           className="text-center mt-12"
         >
-          <p className="text-white/60 text-sm">
+          <p className="text-gray-500 text-sm">
             Secure • Confidential • Professional Review Process
           </p>
         </motion.div>
