@@ -21,6 +21,20 @@ class BusinessKPIs(BaseModel):
     key_partnerships: List[str] = []
     team_size: Optional[Union[str, int, float]] = None
     founders_experience: Optional[str] = None
+    
+    @field_validator('competitive_advantage', 'key_partnerships', mode='before')
+    @classmethod
+    def validate_lists(cls, v):
+        """Convert string 'NA' values to empty lists"""
+        if isinstance(v, str):
+            if v.upper() == 'NA' or v.strip() == '':
+                return []
+            # If it's a single string that's not 'NA', put it in a list
+            return [v]
+        elif isinstance(v, list):
+            # Filter out 'NA' values from lists
+            return [item for item in v if isinstance(item, str) and item.upper() != 'NA' and item.strip() != '']
+        return v if v is not None else []
 
 class TractionKPIs(BaseModel):
     current_customers: Optional[Union[str, int, float]] = None

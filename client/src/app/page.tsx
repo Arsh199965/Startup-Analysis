@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
+import Link from "next/link";
 import {
   Rocket,
   Sparkles,
@@ -272,10 +273,13 @@ export default function Home() {
               >
                 <Label className="text-white text-lg font-medium flex items-center gap-2">
                   <FileText className="w-5 h-5 text-green-400" />
-                  Company Tear Sheet / Portfolio
+                  Company Documents (Up to 3 files)
                 </Label>
+                <p className="text-sm text-gray-400 mb-3">
+                  Upload your cap table, financial statements, tear sheet, pitch deck, or other relevant documents
+                </p>
                 <div className="bg-gray-800/30 border border-gray-700 rounded-xl p-1 backdrop-blur-sm">
-                  <FileUpload onFileSelect={handleFileSelect} />
+                  <FileUpload onFileSelect={handleFileSelect} maxFiles={3} />
                 </div>
               </motion.div>
 
@@ -314,6 +318,20 @@ export default function Home() {
                 </Button>
               </motion.div>
             </form>
+            
+            {/* Edit Startup Link */}
+            <div className="mt-6 text-center">
+              <p className="text-gray-400 text-sm mb-2">
+                Already submitted your startup?
+              </p>
+              <Link 
+                href="/add-files" 
+                className="text-blue-400 hover:text-blue-300 text-sm font-medium transition-colors duration-200 flex items-center justify-center gap-2"
+              >
+                <FileText className="w-4 h-4" />
+                Edit startup & manage files
+              </Link>
+            </div>
           </div>
         </motion.div>
 

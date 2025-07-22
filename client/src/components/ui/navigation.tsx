@@ -10,6 +10,7 @@ export function Navigation() {
 
   const navItems = [
     { href: "/", label: "Submit Startup", icon: Home },
+    { href: "/add-files", label: "Edit Startup", icon: Building2 },
     { href: "/analysis", label: "Analysis", icon: BarChart3 },
     { href: "/admin", label: "Admin Dashboard", icon: Settings },
   ];

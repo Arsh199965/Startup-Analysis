@@ -236,14 +236,28 @@ Extract specific metrics and be precise about what data is available vs. missing
             annual_recurring_revenue=llm_resp.financial_kpis.get("Annual Recurring Revenue (ARR)", llm_resp.financial_kpis.get("annual_recurring_revenue"))
         )
         
-        business_kpis = BusinessKPIs(
-            total_addressable_market=llm_resp.business_kpis.get("Total Addressable Market (TAM)", llm_resp.business_kpis.get("total_addressable_market")),
-            target_market_segment=llm_resp.business_kpis.get("Target market segment", llm_resp.business_kpis.get("target_market_segment")),
-            competitive_advantage=llm_resp.business_kpis.get("Competitive advantages", llm_resp.business_kpis.get("competitive_advantage", [])),
-            key_partnerships=llm_resp.business_kpis.get("Key partnerships", llm_resp.business_kpis.get("key_partnerships", [])),
-            team_size=llm_resp.business_kpis.get("Team size", llm_resp.business_kpis.get("team_size")),
-            founders_experience=llm_resp.business_kpis.get("Founders experience", llm_resp.business_kpis.get("founders_experience"))
-        )
+        # Create business KPIs with improved error handling
+        try:
+            competitive_advantage = llm_resp.business_kpis.get("Competitive advantages", llm_resp.business_kpis.get("competitive_advantage", []))
+            key_partnerships = llm_resp.business_kpis.get("Key partnerships", llm_resp.business_kpis.get("key_partnerships", []))
+            
+            # Ensure these are lists, handle 'NA' cases
+            if isinstance(competitive_advantage, str):
+                competitive_advantage = [] if competitive_advantage.upper() == 'NA' else [competitive_advantage]
+            if isinstance(key_partnerships, str):
+                key_partnerships = [] if key_partnerships.upper() == 'NA' else [key_partnerships]
+                
+            business_kpis = BusinessKPIs(
+                total_addressable_market=llm_resp.business_kpis.get("Total Addressable Market (TAM)", llm_resp.business_kpis.get("total_addressable_market")),
+                target_market_segment=llm_resp.business_kpis.get("Target market segment", llm_resp.business_kpis.get("target_market_segment")),
+                competitive_advantage=competitive_advantage,
+                key_partnerships=key_partnerships,
+                team_size=llm_resp.business_kpis.get("Team size", llm_resp.business_kpis.get("team_size")),
+                founders_experience=llm_resp.business_kpis.get("Founders experience", llm_resp.business_kpis.get("founders_experience"))
+            )
+        except Exception as e:
+            print(f"Error creating BusinessKPIs: {str(e)}")
+            business_kpis = BusinessKPIs()  # Use default empty values
         
         traction_kpis = TractionKPIs(
             current_customers=llm_resp.traction_kpis.get("Current customers", llm_resp.traction_kpis.get("current_customers")),

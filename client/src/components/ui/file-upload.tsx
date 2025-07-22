@@ -11,22 +11,34 @@ interface FileUploadProps {
   acceptedFileTypes?: string[];
   maxFiles?: number;
   maxSize?: number;
+  currentFiles?: number; // Number of files already uploaded (for add files feature)
 }
 
 export function FileUpload({
   onFileSelect,
   acceptedFileTypes = [".pdf", ".doc", ".docx", ".ppt", ".pptx", ".txt"],
-  maxFiles = 1,
+  maxFiles = 3,
   maxSize = 10 * 1024 * 1024, // 10MB
+  currentFiles = 0, // Number of files already uploaded (for add files feature)
 }: FileUploadProps) {
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
 
+  const effectiveMaxFiles = maxFiles - currentFiles;
+
   const onDrop = useCallback(
     (acceptedFiles: File[]) => {
-      setUploadedFiles(acceptedFiles);
-      onFileSelect(acceptedFiles);
+      // Check if adding these files would exceed the limit
+      const totalFiles = uploadedFiles.length + acceptedFiles.length;
+      if (totalFiles > effectiveMaxFiles) {
+        alert(`You can only upload ${effectiveMaxFiles} more file(s). ${currentFiles} file(s) already uploaded.`);
+        return;
+      }
+      
+      const newFiles = [...uploadedFiles, ...acceptedFiles];
+      setUploadedFiles(newFiles);
+      onFileSelect(newFiles);
     },
-    [onFileSelect]
+    [onFileSelect, uploadedFiles, effectiveMaxFiles, currentFiles]
   );
 
   const { getRootProps, getInputProps, isDragActive, fileRejections } =
@@ -42,8 +54,9 @@ export function FileUpload({
           [".pptx"],
         "text/plain": [".txt"],
       },
-      maxFiles,
+      maxFiles: effectiveMaxFiles,
       maxSize,
+      multiple: effectiveMaxFiles > 1,
     });
 
   const removeFile = (index: number) => {
@@ -75,12 +88,17 @@ export function FileUpload({
               <p className="text-lg font-medium text-white">
                 {isDragActive
                   ? "Drop your files here"
-                  : "Drop your tear sheet or portfolio here"}
+                  : `Drop your files here (${effectiveMaxFiles} max)`}
               </p>
               <p className="text-sm text-gray-400">or click to browse files</p>
               <p className="text-xs text-gray-500">
                 Supports PDF, DOC, DOCX, PPT, PPTX, TXT (max{" "}
-                {maxSize / (1024 * 1024)}MB)
+                {maxSize / (1024 * 1024)}MB each)
+                {currentFiles > 0 && (
+                  <span className="block mt-1 text-yellow-400">
+                    {currentFiles} file(s) already uploaded. {effectiveMaxFiles} more allowed.
+                  </span>
+                )}
               </p>
             </div>
           </>
