@@ -21,6 +21,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { FileUpload } from "@/components/ui/file-upload";
+import { ValidationErrorModal } from "@/components/ui/validation-error-modal";
 
 interface StartupSearchResult {
   startup_name: string;
@@ -56,8 +57,11 @@ interface StartupDetails {
 
 export default function EditStartupPage() {
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedStartup, setSelectedStartup] = useState<StartupSearchResult | null>(null);
-  const [startupDetails, setStartupDetails] = useState<StartupDetails | null>(null);
+  const [selectedStartup, setSelectedStartup] =
+    useState<StartupSearchResult | null>(null);
+  const [startupDetails, setStartupDetails] = useState<StartupDetails | null>(
+    null
+  );
   const [searchResults, setSearchResults] = useState<StartupSearchResult[]>([]);
   const [files, setFiles] = useState<File[]>([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -67,6 +71,7 @@ export default function EditStartupPage() {
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [error, setError] = useState("");
   const [submissionResult, setSubmissionResult] = useState<any>(null);
+  const [validationError, setValidationError] = useState<any>(null);
 
   const handleSearch = async () => {
     if (!searchQuery.trim()) return;
@@ -78,7 +83,9 @@ export default function EditStartupPage() {
 
     try {
       const response = await fetch(
-        `http://localhost:8000/api/search-startups/${encodeURIComponent(searchQuery)}`
+        `http://localhost:8000/api/search-startups/${encodeURIComponent(
+          searchQuery
+        )}`
       );
 
       if (!response.ok) {
@@ -87,9 +94,11 @@ export default function EditStartupPage() {
 
       const results = await response.json();
       setSearchResults(results);
-      
+
       if (results.length === 0) {
-        setError("No startups found matching your search. Please check the name and try again.");
+        setError(
+          "No startups found matching your search. Please check the name and try again."
+        );
       }
     } catch (err) {
       setError(
@@ -108,7 +117,9 @@ export default function EditStartupPage() {
 
     try {
       const response = await fetch(
-        `http://localhost:8000/api/startup/${encodeURIComponent(startup.startup_name)}/details`
+        `http://localhost:8000/api/startup/${encodeURIComponent(
+          startup.startup_name
+        )}/details`
       );
 
       if (!response.ok) {
@@ -132,8 +143,12 @@ export default function EditStartupPage() {
 
   const handleDeleteFile = async (fileId: number, fileName: string) => {
     if (!selectedStartup || !startupDetails) return;
-    
-    if (!confirm(`Are you sure you want to delete "${fileName}"? This action cannot be undone.`)) {
+
+    if (
+      !confirm(
+        `Are you sure you want to delete "${fileName}"? This action cannot be undone.`
+      )
+    ) {
       return;
     }
 
@@ -142,7 +157,9 @@ export default function EditStartupPage() {
 
     try {
       const response = await fetch(
-        `http://localhost:8000/api/startup/${encodeURIComponent(selectedStartup.startup_name)}/file/${fileId}`,
+        `http://localhost:8000/api/startup/${encodeURIComponent(
+          selectedStartup.startup_name
+        )}/file/${fileId}`,
         {
           method: "DELETE",
         }
@@ -150,30 +167,29 @@ export default function EditStartupPage() {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.detail || `Delete failed: ${response.status}`);
+        throw new Error(
+          errorData.detail || `Delete failed: ${response.status}`
+        );
       }
 
       const result = await response.json();
-      
+
       // Refresh startup details after deletion
       await handleSelectStartup(selectedStartup);
-      
+
       // Show success message briefly
       setSubmissionResult({
         success: true,
         message: result.message,
-        action: "delete"
+        action: "delete",
       });
-      
+
       // Clear success message after 3 seconds
       setTimeout(() => {
         setSubmissionResult(null);
       }, 3000);
-
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Failed to delete file"
-      );
+      setError(err instanceof Error ? err.message : "Failed to delete file");
     } finally {
       setIsDeleting(null);
     }
@@ -193,7 +209,9 @@ export default function EditStartupPage() {
       });
 
       const response = await fetch(
-        `http://localhost:8000/api/add-files/${encodeURIComponent(selectedStartup.startup_name)}`,
+        `http://localhost:8000/api/add-files/${encodeURIComponent(
+          selectedStartup.startup_name
+        )}`,
         {
           method: "POST",
           body: formData,
@@ -202,23 +220,33 @@ export default function EditStartupPage() {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.detail || `Upload failed: ${response.status}`);
+
+        // Handle file validation errors (422)
+        if (
+          response.status === 422 &&
+          errorData.detail &&
+          typeof errorData.detail === "object"
+        ) {
+          setValidationError(errorData.detail);
+          return;
+        }
+
+        throw new Error(
+          errorData.detail || `Upload failed: ${response.status}`
+        );
       }
 
       const result = await response.json();
       setSubmissionResult(result);
       setIsSubmitted(true);
-      
+
       // Refresh startup details after adding files
       await handleSelectStartup(selectedStartup);
-      
+
       // Clear files after successful upload
       setFiles([]);
-      
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Failed to upload files"
-      );
+      setError(err instanceof Error ? err.message : "Failed to upload files");
     } finally {
       setIsSubmitting(false);
     }
@@ -246,11 +274,13 @@ export default function EditStartupPage() {
   };
 
   const getFileIcon = (contentType: string) => {
-    if (contentType?.includes('pdf')) return '📄';
-    if (contentType?.includes('word') || contentType?.includes('doc')) return '📝';
-    if (contentType?.includes('powerpoint') || contentType?.includes('ppt')) return '📊';
-    if (contentType?.includes('text')) return '📋';
-    return '📁';
+    if (contentType?.includes("pdf")) return "📄";
+    if (contentType?.includes("word") || contentType?.includes("doc"))
+      return "📝";
+    if (contentType?.includes("powerpoint") || contentType?.includes("ppt"))
+      return "📊";
+    if (contentType?.includes("text")) return "📋";
+    return "📁";
   };
 
   // Success Modal Component
@@ -266,7 +296,9 @@ export default function EditStartupPage() {
         >
           <div className="text-center">
             <CheckCircle className="w-16 h-16 text-green-400 mx-auto mb-4" />
-            <h3 className="text-2xl font-bold text-white mb-2">Files Added Successfully!</h3>
+            <h3 className="text-2xl font-bold text-white mb-2">
+              Files Added Successfully!
+            </h3>
             <p className="text-gray-300 mb-4">
               Added {submissionResult.newly_added_files} file(s) to{" "}
               <span className="text-blue-400 font-semibold">
@@ -308,8 +340,8 @@ export default function EditStartupPage() {
           transition={{ duration: 0.8 }}
           className="text-center mb-12"
         >
-          <Link 
-            href="/" 
+          <Link
+            href="/"
             className="inline-flex items-center text-gray-400 hover:text-white transition-colors duration-200 mb-6"
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
@@ -340,7 +372,8 @@ export default function EditStartupPage() {
             transition={{ delay: 0.8 }}
             className="text-lg text-gray-400 max-w-2xl mx-auto leading-relaxed"
           >
-            Manage your startup submission - add new documents, delete existing files, or view current status.
+            Manage your startup submission - add new documents, delete existing
+            files, or view current status.
           </motion.p>
         </motion.div>
 
@@ -357,7 +390,7 @@ export default function EditStartupPage() {
               <Search className="w-6 h-6 text-blue-400" />
               Step 1: Find Your Startup
             </h2>
-            
+
             <div className="flex gap-3">
               <div className="flex-1">
                 <Input
@@ -365,7 +398,7 @@ export default function EditStartupPage() {
                   placeholder="Enter startup name to search..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                  onKeyDown={(e) => e.key === "Enter" && handleSearch()}
                   className="h-14 text-lg bg-gray-800/50 border-gray-700 text-white placeholder:text-gray-500 focus:bg-gray-800 focus:border-blue-500 transition-all duration-300"
                 />
               </div>
@@ -377,7 +410,11 @@ export default function EditStartupPage() {
                 {isSearching ? (
                   <motion.div
                     animate={{ rotate: 360 }}
-                    transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                    transition={{
+                      duration: 1,
+                      repeat: Infinity,
+                      ease: "linear",
+                    }}
                     className="w-5 h-5 border-2 border-white border-t-transparent rounded-full"
                   />
                 ) : (
@@ -389,7 +426,9 @@ export default function EditStartupPage() {
             {/* Search Results */}
             {searchResults.length > 0 && (
               <div className="mt-6 space-y-3">
-                <h3 className="text-lg font-medium text-white">Search Results:</h3>
+                <h3 className="text-lg font-medium text-white">
+                  Search Results:
+                </h3>
                 {searchResults.map((startup) => (
                   <motion.div
                     key={startup.submission_id}
@@ -406,18 +445,28 @@ export default function EditStartupPage() {
                       <div className="flex items-center gap-3">
                         <Building2 className="w-5 h-5 text-blue-400" />
                         <div>
-                          <h4 className="font-semibold text-white">{startup.startup_name}</h4>
-                          <p className="text-sm text-gray-400">by {startup.submitter_name}</p>
+                          <h4 className="font-semibold text-white">
+                            {startup.startup_name}
+                          </h4>
+                          <p className="text-sm text-gray-400">
+                            by {startup.submitter_name}
+                          </p>
                         </div>
                       </div>
                       <div className="text-right">
-                        <div className={`text-sm font-medium ${
-                          startup.can_add_more ? "text-green-400" : "text-red-400"
-                        }`}>
+                        <div
+                          className={`text-sm font-medium ${
+                            startup.can_add_more
+                              ? "text-green-400"
+                              : "text-red-400"
+                          }`}
+                        >
                           {startup.current_files}/3 files
                         </div>
                         {!startup.can_add_more && (
-                          <p className="text-xs text-red-400">Max files reached</p>
+                          <p className="text-xs text-red-400">
+                            Max files reached
+                          </p>
                         )}
                       </div>
                     </div>
@@ -443,7 +492,11 @@ export default function EditStartupPage() {
                 <div className="flex items-center justify-center py-8">
                   <motion.div
                     animate={{ rotate: 360 }}
-                    transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                    transition={{
+                      duration: 1,
+                      repeat: Infinity,
+                      ease: "linear",
+                    }}
                     className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full"
                   />
                 </div>
@@ -455,11 +508,15 @@ export default function EditStartupPage() {
                       <div>
                         <div className="flex items-center gap-2 mb-2">
                           <Building2 className="w-5 h-5 text-blue-400" />
-                          <span className="font-semibold text-white text-lg">{startupDetails.startup_name}</span>
+                          <span className="font-semibold text-white text-lg">
+                            {startupDetails.startup_name}
+                          </span>
                         </div>
                         <div className="flex items-center gap-2 mb-2">
                           <User className="w-4 h-4 text-gray-400" />
-                          <span className="text-gray-300">Submitted by {startupDetails.submitter_name}</span>
+                          <span className="text-gray-300">
+                            Submitted by {startupDetails.submitter_name}
+                          </span>
                         </div>
                         <div className="flex items-center gap-2">
                           <Calendar className="w-4 h-4 text-gray-400" />
@@ -472,14 +529,21 @@ export default function EditStartupPage() {
                         <div className="text-2xl font-bold text-white mb-1">
                           {startupDetails.total_files}/3
                         </div>
-                        <div className="text-sm text-gray-400">Files uploaded</div>
-                        <div className={`text-sm font-medium mt-2 ${
-                          startupDetails.can_add_more ? "text-green-400" : "text-red-400"
-                        }`}>
-                          {startupDetails.can_add_more 
-                            ? `${3 - startupDetails.total_files} more files allowed`
-                            : "Maximum files reached"
-                          }
+                        <div className="text-sm text-gray-400">
+                          Files uploaded
+                        </div>
+                        <div
+                          className={`text-sm font-medium mt-2 ${
+                            startupDetails.can_add_more
+                              ? "text-green-400"
+                              : "text-red-400"
+                          }`}
+                        >
+                          {startupDetails.can_add_more
+                            ? `${
+                                3 - startupDetails.total_files
+                              } more files allowed`
+                            : "Maximum files reached"}
                         </div>
                       </div>
                     </div>
@@ -491,7 +555,7 @@ export default function EditStartupPage() {
                       <FileText className="w-5 h-5 text-purple-400" />
                       Current Files ({startupDetails.total_files})
                     </h3>
-                    
+
                     <div className="space-y-3">
                       <AnimatePresence>
                         {startupDetails.files.map((file) => (
@@ -506,27 +570,41 @@ export default function EditStartupPage() {
                                 {getFileIcon(file.content_type)}
                               </div>
                               <div>
-                                <h4 className="font-medium text-white">{file.original_name}</h4>
+                                <h4 className="font-medium text-white">
+                                  {file.original_name}
+                                </h4>
                                 <p className="text-sm text-gray-400">
-                                  {file.file_size_mb} MB • Uploaded {formatDate(file.created_at)}
+                                  {file.file_size_mb} MB • Uploaded{" "}
+                                  {formatDate(file.created_at)}
                                 </p>
                               </div>
                             </div>
-                            
+
                             <div className="flex items-center gap-2">
                               <Button
-                                onClick={() => handleDeleteFile(file.id, file.original_name)}
-                                disabled={isDeleting === file.id || !startupDetails.can_delete}
+                                onClick={() =>
+                                  handleDeleteFile(file.id, file.original_name)
+                                }
+                                disabled={
+                                  isDeleting === file.id ||
+                                  !startupDetails.can_delete
+                                }
                                 variant="outline"
                                 size="sm"
                                 className={`border-red-600 text-red-400 hover:bg-red-900/20 hover:text-red-300 ${
-                                  !startupDetails.can_delete ? 'opacity-50 cursor-not-allowed' : ''
+                                  !startupDetails.can_delete
+                                    ? "opacity-50 cursor-not-allowed"
+                                    : ""
                                 }`}
                               >
                                 {isDeleting === file.id ? (
                                   <motion.div
                                     animate={{ rotate: 360 }}
-                                    transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                                    transition={{
+                                      duration: 1,
+                                      repeat: Infinity,
+                                      ease: "linear",
+                                    }}
                                     className="w-4 h-4 border-2 border-red-400 border-t-transparent rounded-full"
                                   />
                                 ) : (
@@ -538,12 +616,13 @@ export default function EditStartupPage() {
                         ))}
                       </AnimatePresence>
                     </div>
-                    
+
                     {!startupDetails.can_delete && (
                       <div className="mt-4 p-3 bg-yellow-900/20 border border-yellow-800/50 rounded-lg">
                         <p className="text-yellow-400 text-sm flex items-center gap-2">
                           <AlertCircle className="w-4 h-4" />
-                          Cannot delete files when only 1 remains. At least 1 file is required for analysis.
+                          Cannot delete files when only 1 remains. At least 1
+                          file is required for analysis.
                         </p>
                       </div>
                     )}
@@ -556,11 +635,11 @@ export default function EditStartupPage() {
                         <Upload className="w-5 h-5 text-green-400" />
                         Add New Files
                       </h3>
-                      
+
                       <form onSubmit={handleSubmit} className="space-y-4">
                         <div className="bg-gray-800/30 border border-gray-700 rounded-xl p-1 backdrop-blur-sm">
-                          <FileUpload 
-                            onFileSelect={handleFileSelect} 
+                          <FileUpload
+                            onFileSelect={handleFileSelect}
                             maxFiles={3}
                             currentFiles={startupDetails.total_files}
                           />
@@ -575,13 +654,19 @@ export default function EditStartupPage() {
                             {isSubmitting ? (
                               <motion.div
                                 animate={{ rotate: 360 }}
-                                transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                                transition={{
+                                  duration: 1,
+                                  repeat: Infinity,
+                                  ease: "linear",
+                                }}
                                 className="w-6 h-6 border-2 border-white border-t-transparent rounded-full"
                               />
                             ) : (
                               <>
                                 <Upload className="w-6 h-6 mr-2" />
-                                Add {files.length} File{files.length !== 1 ? 's' : ''} to {startupDetails.startup_name}
+                                Add {files.length} File
+                                {files.length !== 1 ? "s" : ""} to{" "}
+                                {startupDetails.startup_name}
                               </>
                             )}
                           </Button>
@@ -619,6 +704,12 @@ export default function EditStartupPage() {
           )}
         </motion.div>
       </div>
+
+      {/* Validation Error Modal */}
+      <ValidationErrorModal
+        validationError={validationError}
+        onClose={() => setValidationError(null)}
+      />
     </div>
   );
 }

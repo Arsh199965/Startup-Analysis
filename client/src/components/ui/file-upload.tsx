@@ -30,10 +30,12 @@ export function FileUpload({
       // Check if adding these files would exceed the limit
       const totalFiles = uploadedFiles.length + acceptedFiles.length;
       if (totalFiles > effectiveMaxFiles) {
-        alert(`You can only upload ${effectiveMaxFiles} more file(s). ${currentFiles} file(s) already uploaded.`);
+        alert(
+          `You can only upload ${effectiveMaxFiles} more file(s). ${currentFiles} file(s) already uploaded.`
+        );
         return;
       }
-      
+
       const newFiles = [...uploadedFiles, ...acceptedFiles];
       setUploadedFiles(newFiles);
       onFileSelect(newFiles);
@@ -96,7 +98,8 @@ export function FileUpload({
                 {maxSize / (1024 * 1024)}MB each)
                 {currentFiles > 0 && (
                   <span className="block mt-1 text-yellow-400">
-                    {currentFiles} file(s) already uploaded. {effectiveMaxFiles} more allowed.
+                    {currentFiles} file(s) already uploaded. {effectiveMaxFiles}{" "}
+                    more allowed.
                   </span>
                 )}
               </p>

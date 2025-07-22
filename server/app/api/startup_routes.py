@@ -12,6 +12,7 @@ from pathlib import Path
 from app.core.database import get_db
 from app.models.startup import Startup, StartupFile
 from app.schemas.startup import Startup as StartupSchema, StartupSummary
+from app.core.file_validator import file_validator
 
 router = APIRouter()
 
@@ -44,6 +45,24 @@ async def submit_startup(
                 status_code=400,
                 detail="At least 1 file is required for startup submission"
             )
+        
+        # Validate files for financial content and relevance
+        validation_result = file_validator.validate_files(files, startup_name)
+        
+        if not validation_result['is_valid']:
+            error_details = {
+                "message": "File validation failed",
+                "errors": validation_result['errors'],
+                "warnings": validation_result['warnings'],
+                "file_analyses": validation_result['file_analyses']
+            }
+            raise HTTPException(
+                status_code=422,
+                detail=error_details
+            )
+        
+        # If there are warnings but validation passed, we'll include them in response
+        validation_warnings = validation_result.get('warnings', [])
         
         # Check if startup with same name already exists
         existing_startup = db.query(Startup).filter(
@@ -251,6 +270,24 @@ async def add_files_to_startup(
                 status_code=400,
                 detail="At least 1 file is required"
             )
+        
+        # Validate new files for financial content and relevance
+        validation_result = file_validator.validate_files(files, startup.startup_name)
+        
+        if not validation_result['is_valid']:
+            error_details = {
+                "message": "File validation failed",
+                "errors": validation_result['errors'],
+                "warnings": validation_result['warnings'],
+                "file_analyses": validation_result['file_analyses']
+            }
+            raise HTTPException(
+                status_code=422,
+                detail=error_details
+            )
+        
+        # If there are warnings but validation passed, we'll include them in response
+        validation_warnings = validation_result.get('warnings', [])
         
         # Get submission directory
         submission_dir = os.path.join(SUBMISSIONS_DIR, startup.submission_id)

@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { FileUpload } from "@/components/ui/file-upload";
+import { ValidationErrorModal } from "@/components/ui/validation-error-modal";
 
 export default function Home() {
   const [formData, setFormData] = useState({
@@ -25,6 +26,7 @@ export default function Home() {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [validationError, setValidationError] = useState<any>(null);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData((prev) => ({
@@ -62,6 +64,18 @@ export default function Home() {
       });
 
       if (!response.ok) {
+        const errorData = await response.json();
+
+        // Handle file validation errors (422)
+        if (
+          response.status === 422 &&
+          errorData.detail &&
+          typeof errorData.detail === "object"
+        ) {
+          setValidationError(errorData.detail);
+          return;
+        }
+
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
@@ -276,7 +290,8 @@ export default function Home() {
                   Company Documents (Up to 3 files)
                 </Label>
                 <p className="text-sm text-gray-400 mb-3">
-                  Upload your cap table, financial statements, tear sheet, pitch deck, or other relevant documents
+                  Upload your cap table, financial statements, tear sheet, pitch
+                  deck, or other relevant documents
                 </p>
                 <div className="bg-gray-800/30 border border-gray-700 rounded-xl p-1 backdrop-blur-sm">
                   <FileUpload onFileSelect={handleFileSelect} maxFiles={3} />
@@ -318,14 +333,14 @@ export default function Home() {
                 </Button>
               </motion.div>
             </form>
-            
+
             {/* Edit Startup Link */}
             <div className="mt-6 text-center">
               <p className="text-gray-400 text-sm mb-2">
                 Already submitted your startup?
               </p>
-              <Link 
-                href="/add-files" 
+              <Link
+                href="/add-files"
                 className="text-blue-400 hover:text-blue-300 text-sm font-medium transition-colors duration-200 flex items-center justify-center gap-2"
               >
                 <FileText className="w-4 h-4" />
@@ -347,6 +362,12 @@ export default function Home() {
           </p>
         </motion.div>
       </div>
+
+      {/* Validation Error Modal */}
+      <ValidationErrorModal
+        validationError={validationError}
+        onClose={() => setValidationError(null)}
+      />
     </div>
   );
 }
