@@ -9,6 +9,7 @@ load_dotenv()
 from app.core.database import engine, Base
 from app.api.startup_routes import router as startup_router
 from app.api.analysis_routes import router as analysis_router
+from app.api.test_routes import router as test_router
 
 # Create database tables
 Base.metadata.create_all(bind=engine)
@@ -31,6 +32,7 @@ app.add_middleware(
 # Include API routes
 app.include_router(startup_router, prefix="/api", tags=["startups"])
 app.include_router(analysis_router, prefix="/api", tags=["analysis"])
+app.include_router(test_router, prefix="/api/test", tags=["testing"])
 
 @app.get("/")
 async def root():

@@ -13,7 +13,10 @@ from langchain_core.prompts import ChatPromptTemplate
 
 from app.core.database import get_db
 from app.models.startup import Startup
-from app.schemas.analysis import AnalysisResult, FinancialHighlights, LLMAnalysisResponse
+from app.schemas.analysis import (
+    AnalysisResult, FinancialHighlights, LLMAnalysisResponse,
+    FinancialKPIs, BusinessKPIs, TractionKPIs
+)
 from pydantic import BaseModel, Field, field_validator
 from typing import Literal
 
@@ -37,17 +40,45 @@ def build_multimodal_messages(startup_name: str, file_paths: List[str]):
     content_parts = [
         {
             "type": "text", 
-            "text": f"""Please analyze the startup '{startup_name}' based on the attached PDF documents.
-            
-            Provide a comprehensive analysis including:
-            - Executive summary (2-3 sentences)
-            - Key strengths and weaknesses
-            - Financial highlights (revenue model, funding status, market size)
-            - Investment recommendations
-            - Risk assessment (Low/Medium/High)
-            - Investment score (1-10, where 1=lowest potential, 10=highest potential)
-            
-            Focus on business model, market opportunity, financial projections, team, technology, and competitive advantage."""
+            "text": f"""Analyze the startup '{startup_name}' and extract specific KPIs, metrics, and quantifiable factors from the business documents.
+
+IMPORTANT: 
+- Executive summary must be EXACTLY 100 words or less
+- For any KPI where data is not available, return "NA" or "Not enough data"
+- Extract only specific numbers, percentages, and quantifiable metrics
+
+EXTRACT THESE SPECIFIC KPIs WITH EXACT VALUES:
+
+**FINANCIAL KPIs (provide exact numbers or "NA"):**
+- Revenue model: Type (SaaS/Transaction/etc) + pricing
+- Funding status: Amount raised + round stage  
+- Revenue projection Y1: Specific dollar amount or "NA"
+- Revenue projection Y3: Specific dollar amount or "NA"
+- Monthly burn rate: Dollar amount or "NA"
+- Runway months: Number of months or "NA"
+- Customer Acquisition Cost (CAC): Dollar amount or "NA"
+- Customer Lifetime Value (LTV): Dollar amount or "NA"
+- Monthly Recurring Revenue (MRR): Current amount or "NA"
+- Annual Recurring Revenue (ARR): Current amount or "NA"
+
+**BUSINESS KPIs (provide exact values or "NA"):**
+- Total Addressable Market (TAM): Dollar amount or "NA"
+- Serviceable Addressable Market (SAM): Dollar amount or "NA"
+- Target market segment: Specific description or "NA"
+- Team size: Exact number or "NA"
+- Founders experience: Years of relevant experience or "NA"
+- Competitive advantages: List specific advantages or ["NA"]
+- Key partnerships: List partnerships or ["NA"]
+
+**TRACTION KPIs (provide exact numbers or "NA"):**
+- Current customers: Exact count or "NA"
+- Paying customers: Exact count or "NA"
+- Monthly growth rate: Percentage or "NA"
+- User engagement metrics: Specific metrics or "NA"
+- Product development stage: Current stage or "NA"
+- Market validation: Evidence or "NA"
+
+CRITICAL: If any data point is missing from documents, use "NA" - do NOT estimate or guess values."""
         }
     ]
 
@@ -91,18 +122,23 @@ def analyze_startup_with_langchain(startup_name: str, file_paths: List[str]) -> 
         message = HumanMessage(content=content_parts)
         
         # System message with instructions
-        system_content = """You are an expert venture capital analyst specializing in startup evaluation. 
-        Analyze the provided startup documents thoroughly and provide a comprehensive analysis.
-        
-        Focus on:
-        - Business model and market opportunity
-        - Financial projections and metrics
-        - Team and leadership
-        - Technology and competitive advantage
-        - Risks and challenges
-        - Investment potential
-        
-        Be specific and data-driven in your analysis. Provide structured output as requested."""
+        system_content = """You are an expert venture capital analyst and startup evaluator. Your task is to extract specific, quantifiable KPIs and metrics from startup business documents.
+
+ANALYSIS FRAMEWORK:
+1. Focus on extracting hard numbers, percentages, and specific metrics
+2. Identify key performance indicators that investors care about most
+3. Assess market opportunity, team capability, product differentiation, and financial viability
+4. Provide data-driven insights with specific evidence from the documents
+5. Score each dimension objectively based on industry benchmarks
+
+SCORING GUIDELINES:
+- Investment Score (1-10): 8-10 = Strong investment case, 5-7 = Moderate potential, 1-4 = High risk
+- Market Score (1-10): Based on TAM size, growth rate, competitive landscape
+- Team Score (1-10): Based on relevant experience, track record, team completeness
+- Product Score (1-10): Based on innovation, differentiation, market validation
+- Financial Score (1-10): Based on revenue model clarity, unit economics, projections
+
+Extract specific metrics and be precise about what data is available vs. missing."""
 
         # Invoke the LLM with structured output
         print(f"Analyzing {startup_name} with {len(content_parts)-1} PDF documents...")
@@ -132,28 +168,48 @@ def analyze_startup_with_langchain(startup_name: str, file_paths: List[str]) -> 
         if llm_resp is None:
             print("Creating fallback response due to LLM failure...")
             llm_resp = LLMAnalysisResponse(
-                summary=f"Analysis completed for {startup_name}. Document processing successful but detailed AI analysis encountered technical limitations.",
-                strengths=[
-                    "Business documents successfully processed",
-                    "Company submission includes professional documentation",
-                    "File structure indicates organized business planning"
-                ],
-                weaknesses=[
-                    "AI analysis temporarily limited - manual review recommended",
-                    "Technical processing constraints require follow-up"
-                ],
-                financial_highlights={
+                executive_summary=f"KPI analysis completed for {startup_name}. Document processing successful but detailed AI analysis encountered technical limitations.",
+                financial_kpis={
                     "revenue_model": "Details available in submitted documents",
-                    "funding_status": "Information provided in company materials", 
-                    "market_size": "Market analysis included in documentation"
+                    "funding_status": "Information provided in company materials",
+                    "market_size": "Market analysis included in documentation",
+                    "revenue_projection_y1": "Not specified",
+                    "revenue_projection_y3": "Not specified",
+                    "burn_rate": "Not specified",
+                    "runway_months": "Not specified",
+                    "customer_acquisition_cost": "Not specified",
+                    "lifetime_value": "Not specified",
+                    "monthly_recurring_revenue": "Not specified",
+                    "annual_recurring_revenue": "Not specified"
+                },
+                business_kpis={
+                    "total_addressable_market": "See market analysis in documents",
+                    "target_market_segment": "Defined in business plan",
+                    "competitive_advantage": ["Document review required"],
+                    "key_partnerships": ["Partnership details in documents"],
+                    "team_size": "Team information available",
+                    "founders_experience": "Founder details in documents"
+                },
+                traction_kpis={
+                    "current_customers": "Customer data in documents",
+                    "paying_customers": "Not specified",
+                    "monthly_recurring_revenue": "Not specified",
+                    "growth_rate": "Not specified",
+                    "user_engagement_metrics": "Not specified",
+                    "product_development_stage": "Development stage outlined",
+                    "market_validation": "Not specified"
                 },
                 recommendations=[
-                    "Schedule detailed manual document review",
-                    "Consider resubmitting with additional context",
-                    "Follow up with technical team for enhanced analysis"
+                    "Schedule detailed KPI extraction session",
+                    "Provide additional financial metrics",
+                    "Consider supplemental data sources"
                 ],
                 risk_assessment="Medium",
-                investment_score=5
+                investment_score=5,
+                market_opportunity_score=5,
+                team_score=5,
+                product_score=5,
+                financial_health_score=5
             )
             print("Fallback structured response created successfully")
         
@@ -161,39 +217,92 @@ def analyze_startup_with_langchain(startup_name: str, file_paths: List[str]) -> 
         if llm_resp is None:
             raise Exception("Failed to create valid LLM response")
             
-        # Safely access financial highlights
-        financial_data = {}
-        if hasattr(llm_resp, 'financial_highlights') and llm_resp.financial_highlights:
-            financial_data = llm_resp.financial_highlights
+        # Create KPI objects from LLM response with better error handling
+        print(f"LLM Financial KPIs: {llm_resp.financial_kpis}")
+        print(f"LLM Business KPIs: {llm_resp.business_kpis}")
+        print(f"LLM Traction KPIs: {llm_resp.traction_kpis}")
         
-        fh = FinancialHighlights(
-            revenue_model=financial_data.get("revenue_model", "Not specified"),
-            funding_status=financial_data.get("funding_status", "Not specified"),
-            market_size=financial_data.get("market_size", "Not specified")
+        financial_kpis = FinancialKPIs(
+            revenue_model=llm_resp.financial_kpis.get("Revenue model", llm_resp.financial_kpis.get("revenue_model", "Not specified")),
+            funding_status=llm_resp.financial_kpis.get("Funding status", llm_resp.financial_kpis.get("funding_status", "Not specified")),
+            market_size=llm_resp.financial_kpis.get("market_size", "Not specified"),
+            revenue_projection_y1=llm_resp.financial_kpis.get("Revenue projection Y1", llm_resp.financial_kpis.get("revenue_projection_y1")),
+            revenue_projection_y3=llm_resp.financial_kpis.get("Revenue projection Y3", llm_resp.financial_kpis.get("revenue_projection_y3")),
+            burn_rate=llm_resp.financial_kpis.get("Monthly burn rate", llm_resp.financial_kpis.get("burn_rate")),
+            runway_months=llm_resp.financial_kpis.get("Runway months", llm_resp.financial_kpis.get("runway_months")),
+            customer_acquisition_cost=llm_resp.financial_kpis.get("Customer Acquisition Cost (CAC)", llm_resp.financial_kpis.get("customer_acquisition_cost")),
+            lifetime_value=llm_resp.financial_kpis.get("Customer Lifetime Value (LTV)", llm_resp.financial_kpis.get("lifetime_value")),
+            monthly_recurring_revenue=llm_resp.financial_kpis.get("Monthly Recurring Revenue (MRR)", llm_resp.financial_kpis.get("monthly_recurring_revenue")),
+            annual_recurring_revenue=llm_resp.financial_kpis.get("Annual Recurring Revenue (ARR)", llm_resp.financial_kpis.get("annual_recurring_revenue"))
+        )
+        
+        # Create business KPIs with improved error handling
+        try:
+            competitive_advantage = llm_resp.business_kpis.get("Competitive advantages", llm_resp.business_kpis.get("competitive_advantage", []))
+            key_partnerships = llm_resp.business_kpis.get("Key partnerships", llm_resp.business_kpis.get("key_partnerships", []))
+            
+            # Ensure these are lists, handle 'NA' cases
+            if isinstance(competitive_advantage, str):
+                competitive_advantage = [] if competitive_advantage.upper() == 'NA' else [competitive_advantage]
+            if isinstance(key_partnerships, str):
+                key_partnerships = [] if key_partnerships.upper() == 'NA' else [key_partnerships]
+                
+            business_kpis = BusinessKPIs(
+                total_addressable_market=llm_resp.business_kpis.get("Total Addressable Market (TAM)", llm_resp.business_kpis.get("total_addressable_market")),
+                target_market_segment=llm_resp.business_kpis.get("Target market segment", llm_resp.business_kpis.get("target_market_segment")),
+                competitive_advantage=competitive_advantage,
+                key_partnerships=key_partnerships,
+                team_size=llm_resp.business_kpis.get("Team size", llm_resp.business_kpis.get("team_size")),
+                founders_experience=llm_resp.business_kpis.get("Founders experience", llm_resp.business_kpis.get("founders_experience"))
+            )
+        except Exception as e:
+            print(f"Error creating BusinessKPIs: {str(e)}")
+            business_kpis = BusinessKPIs()  # Use default empty values
+        
+        traction_kpis = TractionKPIs(
+            current_customers=llm_resp.traction_kpis.get("Current customers", llm_resp.traction_kpis.get("current_customers")),
+            paying_customers=llm_resp.traction_kpis.get("Paying customers", llm_resp.traction_kpis.get("paying_customers")),
+            monthly_recurring_revenue=llm_resp.traction_kpis.get("Monthly Recurring Revenue (MRR)", llm_resp.traction_kpis.get("monthly_recurring_revenue")),
+            growth_rate=llm_resp.traction_kpis.get("Monthly growth rate", llm_resp.traction_kpis.get("growth_rate")),
+            user_engagement_metrics=llm_resp.traction_kpis.get("User engagement metrics", llm_resp.traction_kpis.get("user_engagement_metrics")),
+            product_development_stage=llm_resp.traction_kpis.get("Product development stage", llm_resp.traction_kpis.get("product_development_stage")),
+            market_validation=llm_resp.traction_kpis.get("Market validation", llm_resp.traction_kpis.get("market_validation"))
         )
 
         return AnalysisResult(
             startup_name=startup_name,
-            summary=getattr(llm_resp, 'summary', f"Analysis completed for {startup_name}"),
-            strengths=getattr(llm_resp, 'strengths', ["Analysis completed"]),
-            weaknesses=getattr(llm_resp, 'weaknesses', ["Further review recommended"]),
-            financial_highlights=fh,
+            executive_summary=getattr(llm_resp, 'executive_summary', f"KPI analysis completed for {startup_name}"),
+            financial_kpis=financial_kpis,
+            business_kpis=business_kpis,
+            traction_kpis=traction_kpis,
             recommendations=getattr(llm_resp, 'recommendations', ["Follow up recommended"]),
             risk_assessment=getattr(llm_resp, 'risk_assessment', "Medium"),
-            investment_score=getattr(llm_resp, 'investment_score', 5)
+            investment_score=getattr(llm_resp, 'investment_score', 5),
+            market_opportunity_score=getattr(llm_resp, 'market_opportunity_score', 5),
+            team_score=getattr(llm_resp, 'team_score', 5),
+            product_score=getattr(llm_resp, 'product_score', 5),
+            financial_health_score=getattr(llm_resp, 'financial_health_score', 5)
         )
 
     except Exception as e:
         print(f"Error in analysis: {str(e)}")
         return AnalysisResult(
             startup_name=startup_name,
-            summary=f"Error analyzing {startup_name}: {e}",
-            strengths=["Analysis failed due to technical error"],
-            weaknesses=["Analysis failed - manual review required"],
-            financial_highlights=FinancialHighlights("Failed", "Failed", "Failed"),
+            executive_summary=f"Error analyzing {startup_name}: {e}",
+            financial_kpis=FinancialKPIs(
+                revenue_model="Analysis failed",
+                funding_status="Analysis failed",
+                market_size="Analysis failed"
+            ),
+            business_kpis=BusinessKPIs(),
+            traction_kpis=TractionKPIs(),
             recommendations=["Manual review required"],
             risk_assessment="High",
-            investment_score=1
+            investment_score=1,
+            market_opportunity_score=1,
+            team_score=1,
+            product_score=1,
+            financial_health_score=1
         )
 
 @router.get("/analyze/{startup_name}", response_model=AnalysisResult)
