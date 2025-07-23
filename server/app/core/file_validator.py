@@ -66,7 +66,7 @@ class FileValidator:
         
         # Allowed file extensions
         self.allowed_extensions = {
-            '.pdf', '.docx', '.doc', '.xlsx', '.xls', '.csv', '.txt'
+            '.pdf',
         }
         
         # Minimum financial keyword threshold

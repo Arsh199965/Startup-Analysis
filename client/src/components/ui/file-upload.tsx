@@ -16,7 +16,7 @@ interface FileUploadProps {
 
 export function FileUpload({
   onFileSelect,
-  acceptedFileTypes = [".pdf", ".doc", ".docx", ".ppt", ".pptx", ".txt"],
+  acceptedFileTypes = [".pdf"],
   maxFiles = 3,
   maxSize = 10 * 1024 * 1024, // 10MB
   currentFiles = 0, // Number of files already uploaded (for add files feature)
@@ -47,14 +47,7 @@ export function FileUpload({
     useDropzone({
       onDrop,
       accept: {
-        "application/pdf": [".pdf"],
-        "application/msword": [".doc"],
-        "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
-          [".docx"],
-        "application/vnd.ms-powerpoint": [".ppt"],
-        "application/vnd.openxmlformats-officedocument.presentationml.presentation":
-          [".pptx"],
-        "text/plain": [".txt"],
+        "application/pdf": [".pdf"]
       },
       maxFiles: effectiveMaxFiles,
       maxSize,
@@ -94,7 +87,7 @@ export function FileUpload({
               </p>
               <p className="text-sm text-gray-400">or click to browse files</p>
               <p className="text-xs text-gray-500">
-                Supports PDF, DOC, DOCX, PPT, PPTX, TXT (max{" "}
+                Supports PDF files only (max{" "}
                 {maxSize / (1024 * 1024)}MB each)
                 {currentFiles > 0 && (
                   <span className="block mt-1 text-yellow-400">
