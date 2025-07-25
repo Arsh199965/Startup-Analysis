@@ -232,8 +232,7 @@ export function ValidationErrorModal({
               <li className="flex items-start gap-2">
                 <span className="text-green-400 mt-1">•</span>
                 <span>
-                  Supported formats: PDF, Word (.docx), Excel (.xlsx), CSV, and
-                  text files
+                  Supported formats: PDF
                 </span>
               </li>
               <li className="flex items-start gap-2">
