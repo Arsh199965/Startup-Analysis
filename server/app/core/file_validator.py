@@ -142,12 +142,12 @@ class FileValidator:
                         f"File '{file_data['filename']}' may not be related to startup '{startup_name}'. "
                         f"Consistency score: {analysis['startup_score']:.2f}"
                     )
-            
+                    results['is_valid'] = False
             # Cross-file consistency check
             consistency_check = self._check_cross_file_consistency(file_contents, startup_name_normalized)
             if not consistency_check['consistent']:
                 results['warnings'].extend(consistency_check['warnings'])
-            
+                results['is_valid'] = False
         except Exception as e:
             results['is_valid'] = False
             results['errors'].append(f"Validation error: {str(e)}")
