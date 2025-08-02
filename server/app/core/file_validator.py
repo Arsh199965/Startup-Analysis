@@ -71,7 +71,7 @@ class FileValidator:
         
         # Minimum financial keyword threshold
         self.min_financial_score = 3
-        self.min_startup_consistency_score = 0.7
+        self.min_startup_consistency_score = 0.5
 
     def validate_files(self, files: List[Any], startup_name: str) -> Dict[str, Any]:
         """
