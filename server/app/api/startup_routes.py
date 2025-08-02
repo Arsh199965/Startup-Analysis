@@ -27,6 +27,7 @@ async def submit_startup(
     startup_name: str = Form(...),
     submitter_name: str = Form(...),
     files: List[UploadFile] = File(...),
+    bypass_validation: str = Form(None),
     db: Session = Depends(get_db)
 ):
     """
@@ -46,23 +47,39 @@ async def submit_startup(
                 detail="At least 1 file is required for startup submission"
             )
         
-        # Validate files for financial content and relevance
-        validation_result = file_validator.validate_files(files, startup_name)
+        # Validate files for financial content and relevance (unless bypassed)
+        validation_warnings = []
+        should_bypass = bypass_validation and bypass_validation.lower() == "true"
         
-        if not validation_result['is_valid']:
-            error_details = {
-                "message": "File validation failed",
-                "errors": validation_result['errors'],
-                "warnings": validation_result['warnings'],
-                "file_analyses": validation_result['file_analyses']
-            }
-            raise HTTPException(
-                status_code=422,
-                detail=error_details
-            )
-        
-        # If there are warnings but validation passed, we'll include them in response
-        validation_warnings = validation_result.get('warnings', [])
+        if not should_bypass:
+            validation_result = file_validator.validate_files(files, startup_name)
+            
+            if not validation_result['is_valid']:
+                error_details = {
+                    "message": "File validation failed",
+                    "errors": validation_result['errors'],
+                    "warnings": validation_result['warnings'],
+                    "file_analyses": validation_result['file_analyses']
+                }
+                raise HTTPException(
+                    status_code=422,
+                    detail=error_details
+                )
+            
+            # If there are warnings but validation passed, return warnings without saving files
+            validation_warnings = validation_result.get('warnings', [])
+            if validation_warnings:
+                return JSONResponse(
+                    status_code=200,
+                    content={
+                        "has_warnings": True,
+                        "warnings": validation_warnings,
+                        "message": "File validation completed with warnings. Click 'Proceed Anyway' to submit startup."
+                    }
+                )
+        else:
+            # If validation is bypassed, add a note
+            validation_warnings = ["File validation was bypassed by user request"]
         
         # Check if startup with same name already exists
         existing_startup = db.query(Startup).filter(
@@ -154,11 +171,16 @@ async def submit_startup(
                 "submission_id": submission_id,
                 "timestamp": db_startup.created_at.isoformat(),
                 "files_received": len(saved_files),
-                "database_id": db_startup.id
+                "database_id": db_startup.id,
+                "warnings": validation_warnings  # Include warnings in successful response
             }
         )
         
     except Exception as e:
+        print(f"ERROR in submit_startup: {str(e)}")
+        print(f"ERROR type: {type(e)}")
+        import traceback
+        print(f"ERROR traceback: {traceback.format_exc()}")
         db.rollback()
         raise HTTPException(
             status_code=500,
@@ -237,6 +259,7 @@ async def get_stats(db: Session = Depends(get_db)):
 async def add_files_to_startup(
     startup_name: str,
     files: List[UploadFile] = File(...),
+    bypass_validation: str = Form(None),
     db: Session = Depends(get_db)
 ):
     """
@@ -271,23 +294,39 @@ async def add_files_to_startup(
                 detail="At least 1 file is required"
             )
         
-        # Validate new files for financial content and relevance
-        validation_result = file_validator.validate_files(files, startup.startup_name)
+        # Validate new files for financial content and relevance (unless bypassed)
+        validation_warnings = []
+        should_bypass = bypass_validation and bypass_validation.lower() == "true"
         
-        if not validation_result['is_valid']:
-            error_details = {
-                "message": "File validation failed",
-                "errors": validation_result['errors'],
-                "warnings": validation_result['warnings'],
-                "file_analyses": validation_result['file_analyses']
-            }
-            raise HTTPException(
-                status_code=422,
-                detail=error_details
-            )
-        
-        # If there are warnings but validation passed, we'll include them in response
-        validation_warnings = validation_result.get('warnings', [])
+        if not should_bypass:
+            validation_result = file_validator.validate_files(files, startup.startup_name)
+            
+            if not validation_result['is_valid']:
+                error_details = {
+                    "message": "File validation failed",
+                    "errors": validation_result['errors'],
+                    "warnings": validation_result['warnings'],
+                    "file_analyses": validation_result['file_analyses']
+                }
+                raise HTTPException(
+                    status_code=422,
+                    detail=error_details
+                )
+            
+            # If there are warnings but validation passed, return warnings without saving files
+            validation_warnings = validation_result.get('warnings', [])
+            if validation_warnings:
+                return JSONResponse(
+                    status_code=200,
+                    content={
+                        "has_warnings": True,
+                        "warnings": validation_warnings,
+                        "message": "File validation completed with warnings. Click 'Proceed Anyway' to upload files."
+                    }
+                )
+        else:
+            # If validation is bypassed, add a note
+            validation_warnings = ["File validation was bypassed by user request"]
         
         # Get submission directory
         submission_dir = os.path.join(SUBMISSIONS_DIR, startup.submission_id)
@@ -337,7 +376,8 @@ async def add_files_to_startup(
                 "startup_name": startup.startup_name,
                 "total_files": len(startup.files),
                 "newly_added_files": len(saved_files),
-                "files_added": saved_files
+                "files_added": saved_files,
+                "warnings": validation_warnings  # Include warnings in successful response
             }
         )
         

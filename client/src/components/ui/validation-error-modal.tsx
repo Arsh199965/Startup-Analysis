@@ -27,13 +27,19 @@ interface ValidationError {
 interface ValidationErrorModalProps {
   validationError: ValidationError | null;
   onClose: () => void;
+  onProceedWithWarnings?: () => void;
 }
 
 export function ValidationErrorModal({
   validationError,
   onClose,
+  onProceedWithWarnings,
 }: ValidationErrorModalProps) {
   if (!validationError) return null;
+
+  const hasErrors = validationError.errors.length > 0;
+  const hasWarnings = validationError.warnings.length > 0;
+  const isWarningsOnly = hasWarnings && !hasErrors;
 
   const getScoreColor = (score: number, isFinancial: boolean) => {
     if (!isFinancial) return "text-red-400";
@@ -54,15 +60,29 @@ export function ValidationErrorModal({
       <motion.div
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="bg-gray-900 border border-red-500/30 rounded-2xl max-w-4xl w-full max-h-[80vh] overflow-hidden shadow-2xl"
+        className={`bg-gray-900 border rounded-2xl max-w-4xl w-full max-h-[80vh] overflow-hidden shadow-2xl ${
+          isWarningsOnly ? "border-yellow-500/30" : "border-red-500/30"
+        }`}
       >
         {/* Header */}
-        <div className="bg-red-500/10 border-b border-red-500/30 p-6 flex items-center justify-between">
+        <div
+          className={`border-b p-6 flex items-center justify-between ${
+            isWarningsOnly
+              ? "bg-yellow-500/10 border-yellow-500/30"
+              : "bg-red-500/10 border-red-500/30"
+          }`}
+        >
           <div className="flex items-center gap-3">
-            <AlertTriangle className="w-8 h-8 text-red-400" />
+            {isWarningsOnly ? (
+              <AlertTriangle className="w-8 h-8 text-yellow-400" />
+            ) : (
+              <AlertTriangle className="w-8 h-8 text-red-400" />
+            )}
             <div>
               <h3 className="text-xl font-bold text-white">
-                File Validation Failed
+                {isWarningsOnly
+                  ? "File Validation Warnings"
+                  : "File Validation Failed"}
               </h3>
               <p className="text-gray-300 text-sm">{validationError.message}</p>
             </div>
@@ -231,9 +251,7 @@ export function ValidationErrorModal({
               </li>
               <li className="flex items-start gap-2">
                 <span className="text-green-400 mt-1">•</span>
-                <span>
-                  Supported formats: PDF
-                </span>
+                <span>Supported formats: PDF</span>
               </li>
               <li className="flex items-start gap-2">
                 <span className="text-green-400 mt-1">•</span>
@@ -247,13 +265,31 @@ export function ValidationErrorModal({
         </div>
 
         {/* Footer */}
-        <div className="border-t border-gray-700 p-6 flex justify-end">
-          <Button
-            onClick={onClose}
-            className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-6 py-2"
-          >
-            Try Again
-          </Button>
+        <div className="border-t border-gray-700 p-6 flex justify-end gap-3">
+          {isWarningsOnly ? (
+            <>
+              <Button
+                onClick={onClose}
+                variant="outline"
+                className="border-gray-600 text-gray-400 hover:bg-gray-800 px-6 py-2"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={onProceedWithWarnings}
+                className="bg-gradient-to-r from-yellow-600 to-orange-600 hover:from-yellow-700 hover:to-orange-700 text-white px-6 py-2"
+              >
+                Proceed Anyway
+              </Button>
+            </>
+          ) : (
+            <Button
+              onClick={onClose}
+              className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-6 py-2"
+            >
+              Try Again
+            </Button>
+          )}
         </div>
       </motion.div>
     </div>

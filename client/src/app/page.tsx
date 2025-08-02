@@ -42,7 +42,7 @@ export default function Home() {
     }));
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent, bypassValidation = false) => {
     e.preventDefault();
     setIsSubmitting(true);
 
@@ -50,6 +50,11 @@ export default function Home() {
     const formDataToSend = new FormData();
     formDataToSend.append("startup_name", formData.startupName);
     formDataToSend.append("submitter_name", formData.submitterName);
+
+    // Add bypass validation flag if needed
+    if (bypassValidation) {
+      formDataToSend.append("bypass_validation", "true");
+    }
 
     // Append all files with the same field name 'files'
     formData.files.forEach((file) => {
@@ -76,6 +81,67 @@ export default function Home() {
           return;
         }
 
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+      console.log("Submission successful:", result);
+
+      // Check if the response has warnings (no files saved yet)
+      if (result.has_warnings && result.warnings && !bypassValidation) {
+        setValidationError({
+          message: result.message || "File validation completed with warnings",
+          errors: [],
+          warnings: result.warnings,
+          file_analyses: [],
+        });
+        return;
+      }
+
+      setIsSubmitted(true);
+    } catch (error) {
+      console.error("Error submitting form:", error);
+      alert(
+        "Failed to submit. Please make sure the backend server is running on port 8000."
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleProceedWithWarnings = async () => {
+    if (
+      !formData.startupName ||
+      !formData.submitterName ||
+      formData.files.length === 0
+    ) {
+      setValidationError(null);
+      return;
+    }
+
+    setValidationError(null);
+    setIsSubmitting(true);
+
+    try {
+      // Create fresh FormData with bypass validation flag
+      const formDataToSend = new FormData();
+      formDataToSend.append("startup_name", formData.startupName);
+      formDataToSend.append("submitter_name", formData.submitterName);
+      formDataToSend.append("bypass_validation", "true");
+
+      // Append all files
+      formData.files.forEach((file) => {
+        formDataToSend.append("files", file);
+      });
+
+      // Submit to FastAPI backend
+      const response = await fetch("http://localhost:8000/api/submit-startup", {
+        method: "POST",
+        body: formDataToSend,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
@@ -367,6 +433,7 @@ export default function Home() {
       <ValidationErrorModal
         validationError={validationError}
         onClose={() => setValidationError(null)}
+        onProceedWithWarnings={handleProceedWithWarnings}
       />
     </div>
   );

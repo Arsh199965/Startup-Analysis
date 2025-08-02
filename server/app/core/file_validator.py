@@ -142,7 +142,10 @@ class FileValidator:
                         f"File '{file_data['filename']}' may not be related to startup '{startup_name}'. "
                         f"Consistency score: {analysis['startup_score']:.2f}"
                     )
-                    results['is_valid'] = False
+                    # Only fail validation if the file is also not financial
+                    # If it's financial but has low startup consistency, just warn
+                    if not analysis['is_financial']:
+                        results['is_valid'] = False
             # Cross-file consistency check
             consistency_check = self._check_cross_file_consistency(file_contents, startup_name_normalized)
             if not consistency_check['consistent']:
