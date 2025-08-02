@@ -43,57 +43,41 @@ def build_multimodal_messages(startup_name: str, file_paths: List[str]):
 IMPORTANT: 
 - Executive summary must be EXACTLY 100 words or less
 - Extract specific numbers, percentages, and quantifiable metrics from the documents
-- If you find some financial data but missing KPIs, calculate them using standard formulas
 - For any KPI where data is not available, return "NA"
-
-**PRIMARY TASK: Extract all available data first, then calculate missing values**
-
-**QUICK REFERENCE - CALCULATION FORMULAS:**
-• ARR = MRR × 12 | MRR = ARR ÷ 12
-• Cash Runway = Current Cash ÷ Monthly Burn Rate
-• LTV:CAC Ratio = LTV ÷ CAC
-• ARPU = Revenue ÷ Customers
-• Growth Rate = ((Current - Previous) ÷ Previous) × 100
+- Return structured data with direct field values (not nested dictionaries)
 
 **EXTRACT THESE SPECIFIC KPIs:**
 
-**FINANCIAL KPIs (exact numbers or "NA"):**
-- Revenue model: Type (SaaS/Transaction/etc) + pricing
-- Funding status: Amount raised + round stage  
-- Revenue projection Y1: Specific dollar amount or "NA"
-- Revenue projection Y3: Specific dollar amount or "NA"
-- Monthly burn rate: Dollar amount or "NA"
-- Runway months: Number of months or "NA"
-- Customer Acquisition Cost (CAC): Dollar amount or "NA"
-- Customer Lifetime Value (LTV): Dollar amount or "NA"
-- Monthly Recurring Revenue (MRR): Current amount or "NA"
-- Annual Recurring Revenue (ARR): Current amount or "NA"
+**FINANCIAL METRICS:**
+- revenue_model: Type (SaaS/Transaction/etc) + pricing
+- funding_status: Amount raised + round stage  
+- market_size: Market analysis
+- revenue_projection_y1: Year 1 revenue projection or "NA"
+- revenue_projection_y3: Year 3 revenue projection or "NA"
+- burn_rate: Monthly burn rate or "NA"
+- runway_months: Runway in months or "NA"
+- customer_acquisition_cost: CAC amount or "NA"
+- lifetime_value: LTV amount or "NA"
+- monthly_recurring_revenue: MRR amount or "NA"
+- annual_recurring_revenue: ARR amount or "NA"
 
-**BUSINESS KPIs (exact values or "NA"):**
-- Total Addressable Market (TAM): Dollar amount or "NA"
-- Serviceable Addressable Market (SAM): Dollar amount or "NA"
-- Target market segment: Specific description or "NA"
-- Team size: Exact number or "NA"
-- Founders experience: Years of relevant experience or "NA"
-- Competitive advantages: List specific advantages or ["NA"]
-- Key partnerships: List partnerships or ["NA"]
+**BUSINESS METRICS:**
+- total_addressable_market: TAM size or "NA"
+- target_market_segment: Market segment description or "NA"
+- competitive_advantage: List of advantages or []
+- key_partnerships: List of partnerships or []
+- team_size: Number of team members or "NA"
+- founders_experience: Experience description or "NA"
 
-**TRACTION KPIs (exact numbers or "NA"):**
-- Current customers: Exact count or "NA"
-- Paying customers: Exact count or "NA"
-- Monthly growth rate: Percentage or "NA"
-- User engagement metrics: Specific metrics or "NA"
-- Product development stage: Current stage or "NA"
-- Market validation: Evidence or "NA"
-- Monthly Recurring Revenue (MRR): Current amount or "NA"
+**TRACTION METRICS:**
+- current_customers: Customer count or "NA"
+- paying_customers: Paying customer count or "NA"
+- growth_rate: Monthly growth percentage or "NA"
+- user_engagement_metrics: Engagement data or "NA"
+- product_development_stage: Development stage or "NA"
+- market_validation: Validation evidence or "NA"
 
-**CALCULATION PRIORITY:**
-1. First extract all directly mentioned values
-2. Then calculate missing KPIs if you have the inputs
-3. Mark calculated values with "(calculated)"
-4. Only use "NA" if data is truly unavailable
-
-CRITICAL: Focus on data extraction first, calculations second. Be thorough in finding financial data in the documents."""
+CRITICAL: Extract data directly into these field names. Use "NA" for missing data."""
         }
     ]
 
@@ -189,36 +173,29 @@ Be thorough in data extraction and precise in calculations. Mark calculated valu
             print("Creating fallback response due to LLM failure...")
             llm_resp = LLMAnalysisResponse(
                 executive_summary=f"KPI analysis completed for {startup_name}. Document processing successful but detailed AI analysis encountered technical limitations.",
-                financial_kpis={
-                    "revenue_model": "Details available in submitted documents",
-                    "funding_status": "Information provided in company materials",
-                    "market_size": "Market analysis included in documentation",
-                    "revenue_projection_y1": "Not specified",
-                    "revenue_projection_y3": "Not specified",
-                    "burn_rate": "Not specified",
-                    "runway_months": "Not specified",
-                    "customer_acquisition_cost": "Not specified",
-                    "lifetime_value": "Not specified",
-                    "monthly_recurring_revenue": "Not specified",
-                    "annual_recurring_revenue": "Not specified"
-                },
-                business_kpis={
-                    "total_addressable_market": "See market analysis in documents",
-                    "target_market_segment": "Defined in business plan",
-                    "competitive_advantage": ["Document review required"],
-                    "key_partnerships": ["Partnership details in documents"],
-                    "team_size": "Team information available",
-                    "founders_experience": "Founder details in documents"
-                },
-                traction_kpis={
-                    "current_customers": "Customer data in documents",
-                    "paying_customers": "Not specified",
-                    "monthly_recurring_revenue": "Not specified",
-                    "growth_rate": "Not specified",
-                    "user_engagement_metrics": "Not specified",
-                    "product_development_stage": "Development stage outlined",
-                    "market_validation": "Not specified"
-                },
+                revenue_model="Details available in submitted documents",
+                funding_status="Information provided in company materials",
+                market_size="Market analysis included in documentation",
+                revenue_projection_y1="Not specified",
+                revenue_projection_y3="Not specified",
+                burn_rate="Not specified",
+                runway_months="Not specified",
+                customer_acquisition_cost="Not specified",
+                lifetime_value="Not specified",
+                monthly_recurring_revenue="Not specified",
+                annual_recurring_revenue="Not specified",
+                total_addressable_market="See market analysis in documents",
+                target_market_segment="Defined in business plan",
+                competitive_advantage=["Document review required"],
+                key_partnerships=["Partnership details in documents"],
+                team_size="Team information available",
+                founders_experience="Founder details in documents",
+                current_customers="Customer data in documents",
+                paying_customers="Not specified",
+                growth_rate="Not specified",
+                user_engagement_metrics="Not specified",
+                product_development_stage="Development stage outlined",
+                market_validation="Not specified",
                 recommendations=[
                     "Schedule detailed KPI extraction session",
                     "Provide additional financial metrics",
@@ -237,61 +214,40 @@ Be thorough in data extraction and precise in calculations. Mark calculated valu
         if llm_resp is None:
             raise Exception("Failed to create valid LLM response")
             
-        # Create KPI objects from LLM response with better error handling
-        print(f"LLM Financial KPIs: {llm_resp.financial_kpis}")
-        print(f"LLM Business KPIs: {llm_resp.business_kpis}")
-        print(f"LLM Traction KPIs: {llm_resp.traction_kpis}")
-        
-        # Debug MRR extraction specifically
-        mrr_financial = llm_resp.financial_kpis.get("Monthly Recurring Revenue (MRR)", llm_resp.financial_kpis.get("monthly_recurring_revenue", llm_resp.financial_kpis.get("MRR")))
-        mrr_traction = llm_resp.traction_kpis.get("Monthly Recurring Revenue (MRR)", llm_resp.traction_kpis.get("monthly_recurring_revenue", llm_resp.traction_kpis.get("MRR")))
-        print(f"DEBUG MRR - Financial: {mrr_financial}, Traction: {mrr_traction}")
+        # Now we can directly create KPI objects from the flattened LLM response
+        print(f"Streamlined LLM response received successfully")
         
         financial_kpis = FinancialKPIs(
-            revenue_model=llm_resp.financial_kpis.get("Revenue model", llm_resp.financial_kpis.get("revenue_model", "Not specified")),
-            funding_status=llm_resp.financial_kpis.get("Funding status", llm_resp.financial_kpis.get("funding_status", "Not specified")),
-            market_size=llm_resp.financial_kpis.get("market_size", "Not specified"),
-            revenue_projection_y1=llm_resp.financial_kpis.get("Revenue projection Y1", llm_resp.financial_kpis.get("revenue_projection_y1")),
-            revenue_projection_y3=llm_resp.financial_kpis.get("Revenue projection Y3", llm_resp.financial_kpis.get("revenue_projection_y3")),
-            burn_rate=llm_resp.financial_kpis.get("Monthly burn rate", llm_resp.financial_kpis.get("burn_rate")),
-            runway_months=llm_resp.financial_kpis.get("Runway months", llm_resp.financial_kpis.get("runway_months")),
-            customer_acquisition_cost=llm_resp.financial_kpis.get("Customer Acquisition Cost (CAC)", llm_resp.financial_kpis.get("customer_acquisition_cost")),
-            lifetime_value=llm_resp.financial_kpis.get("Customer Lifetime Value (LTV)", llm_resp.financial_kpis.get("lifetime_value")),
-            monthly_recurring_revenue=llm_resp.financial_kpis.get("Monthly Recurring Revenue (MRR)", llm_resp.financial_kpis.get("monthly_recurring_revenue", llm_resp.financial_kpis.get("MRR"))),
-            annual_recurring_revenue=llm_resp.financial_kpis.get("Annual Recurring Revenue (ARR)", llm_resp.financial_kpis.get("annual_recurring_revenue"))
+            revenue_model=getattr(llm_resp, 'revenue_model', "Not specified"),
+            funding_status=getattr(llm_resp, 'funding_status', "Not specified"),
+            market_size=getattr(llm_resp, 'market_size', "Not specified"),
+            revenue_projection_y1=getattr(llm_resp, 'revenue_projection_y1', None),
+            revenue_projection_y3=getattr(llm_resp, 'revenue_projection_y3', None),
+            burn_rate=getattr(llm_resp, 'burn_rate', None),
+            runway_months=getattr(llm_resp, 'runway_months', None),
+            customer_acquisition_cost=getattr(llm_resp, 'customer_acquisition_cost', None),
+            lifetime_value=getattr(llm_resp, 'lifetime_value', None),
+            monthly_recurring_revenue=getattr(llm_resp, 'monthly_recurring_revenue', None),
+            annual_recurring_revenue=getattr(llm_resp, 'annual_recurring_revenue', None)
         )
         
-        # Create business KPIs with improved error handling
-        try:
-            competitive_advantage = llm_resp.business_kpis.get("Competitive advantages", llm_resp.business_kpis.get("competitive_advantage", []))
-            key_partnerships = llm_resp.business_kpis.get("Key partnerships", llm_resp.business_kpis.get("key_partnerships", []))
-            
-            # Ensure these are lists, handle 'NA' cases
-            if isinstance(competitive_advantage, str):
-                competitive_advantage = [] if competitive_advantage.upper() == 'NA' else [competitive_advantage]
-            if isinstance(key_partnerships, str):
-                key_partnerships = [] if key_partnerships.upper() == 'NA' else [key_partnerships]
-                
-            business_kpis = BusinessKPIs(
-                total_addressable_market=llm_resp.business_kpis.get("Total Addressable Market (TAM)", llm_resp.business_kpis.get("total_addressable_market")),
-                target_market_segment=llm_resp.business_kpis.get("Target market segment", llm_resp.business_kpis.get("target_market_segment")),
-                competitive_advantage=competitive_advantage,
-                key_partnerships=key_partnerships,
-                team_size=llm_resp.business_kpis.get("Team size", llm_resp.business_kpis.get("team_size")),
-                founders_experience=llm_resp.business_kpis.get("Founders experience", llm_resp.business_kpis.get("founders_experience"))
-            )
-        except Exception as e:
-            print(f"Error creating BusinessKPIs: {str(e)}")
-            business_kpis = BusinessKPIs()  # Use default empty values
+        business_kpis = BusinessKPIs(
+            total_addressable_market=getattr(llm_resp, 'total_addressable_market', None),
+            target_market_segment=getattr(llm_resp, 'target_market_segment', None),
+            competitive_advantage=getattr(llm_resp, 'competitive_advantage', []),
+            key_partnerships=getattr(llm_resp, 'key_partnerships', []),
+            team_size=getattr(llm_resp, 'team_size', None),
+            founders_experience=getattr(llm_resp, 'founders_experience', None)
+        )
         
         traction_kpis = TractionKPIs(
-            current_customers=llm_resp.traction_kpis.get("Current customers", llm_resp.traction_kpis.get("current_customers")),
-            paying_customers=llm_resp.traction_kpis.get("Paying customers", llm_resp.traction_kpis.get("paying_customers")),
-            monthly_recurring_revenue=llm_resp.traction_kpis.get("Monthly Recurring Revenue (MRR)", llm_resp.traction_kpis.get("monthly_recurring_revenue", llm_resp.traction_kpis.get("MRR"))),
-            growth_rate=llm_resp.traction_kpis.get("Monthly growth rate", llm_resp.traction_kpis.get("growth_rate")),
-            user_engagement_metrics=llm_resp.traction_kpis.get("User engagement metrics", llm_resp.traction_kpis.get("user_engagement_metrics")),
-            product_development_stage=llm_resp.traction_kpis.get("Product development stage", llm_resp.traction_kpis.get("product_development_stage")),
-            market_validation=llm_resp.traction_kpis.get("Market validation", llm_resp.traction_kpis.get("market_validation"))
+            current_customers=getattr(llm_resp, 'current_customers', None),
+            paying_customers=getattr(llm_resp, 'paying_customers', None),
+            monthly_recurring_revenue=getattr(llm_resp, 'monthly_recurring_revenue', None),
+            growth_rate=getattr(llm_resp, 'growth_rate', None),
+            user_engagement_metrics=getattr(llm_resp, 'user_engagement_metrics', None),
+            product_development_stage=getattr(llm_resp, 'product_development_stage', None),
+            market_validation=getattr(llm_resp, 'market_validation', None)
         )
 
         return AnalysisResult(

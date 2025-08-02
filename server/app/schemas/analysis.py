@@ -70,13 +70,37 @@ class AnalysisRequest(BaseModel):
     additional_context: Optional[str] = None
 
 class LLMAnalysisResponse(BaseModel):
-    """Enhanced schema for KPI-focused LLM analysis response"""
+    """Streamlined schema for direct KPI extraction from LLM"""
     executive_summary: str = Field(description="Brief executive summary in exactly 100 words or less, highlighting key business metrics and investment potential")
     
-    # Use actual KPI schemas instead of dicts
-    financial_kpis: dict = Field(description="Financial metrics including revenue model, funding, projections, burn rate, CAC, LTV, MRR, ARR")
-    business_kpis: dict = Field(description="Business metrics including market size, competitive advantage, team, partnerships")
-    traction_kpis: dict = Field(description="Traction metrics including customers, MRR, growth rate, product stage")
+    # Financial KPIs - Direct fields instead of nested dict
+    revenue_model: str = Field(description="Revenue model type and pricing")
+    funding_status: str = Field(description="Funding amount raised and round stage")
+    market_size: str = Field(description="Market size analysis")
+    revenue_projection_y1: Optional[Union[str, int, float]] = Field(default="NA", description="Year 1 revenue projection")
+    revenue_projection_y3: Optional[Union[str, int, float]] = Field(default="NA", description="Year 3 revenue projection")
+    burn_rate: Optional[Union[str, int, float]] = Field(default="NA", description="Monthly burn rate")
+    runway_months: Optional[Union[str, int, float]] = Field(default="NA", description="Runway in months")
+    customer_acquisition_cost: Optional[Union[str, int, float]] = Field(default="NA", description="Customer Acquisition Cost (CAC)")
+    lifetime_value: Optional[Union[str, int, float]] = Field(default="NA", description="Customer Lifetime Value (LTV)")
+    monthly_recurring_revenue: Optional[Union[str, int, float]] = Field(default="NA", description="Monthly Recurring Revenue (MRR)")
+    annual_recurring_revenue: Optional[Union[str, int, float]] = Field(default="NA", description="Annual Recurring Revenue (ARR)")
+    
+    # Business KPIs - Direct fields
+    total_addressable_market: Optional[Union[str, int, float]] = Field(default="NA", description="Total Addressable Market (TAM)")
+    target_market_segment: Optional[str] = Field(default="NA", description="Target market segment description")
+    competitive_advantage: List[str] = Field(default_factory=list, description="List of competitive advantages")
+    key_partnerships: List[str] = Field(default_factory=list, description="List of key partnerships")
+    team_size: Optional[Union[str, int, float]] = Field(default="NA", description="Team size")
+    founders_experience: Optional[str] = Field(default="NA", description="Founders experience")
+    
+    # Traction KPIs - Direct fields
+    current_customers: Optional[Union[str, int, float]] = Field(default="NA", description="Current customer count")
+    paying_customers: Optional[Union[str, int, float]] = Field(default="NA", description="Paying customer count")
+    growth_rate: Optional[Union[str, int, float]] = Field(default="NA", description="Monthly growth rate")
+    user_engagement_metrics: Optional[str] = Field(default="NA", description="User engagement metrics")
+    product_development_stage: Optional[str] = Field(default="NA", description="Product development stage")
+    market_validation: Optional[str] = Field(default="NA", description="Market validation evidence")
 
     recommendations: List[str] = Field(description="List of specific, actionable recommendations for growth")
     risk_assessment: Literal['Low', 'Medium', 'High'] = Field(description="Overall risk level assessment")
@@ -87,6 +111,20 @@ class LLMAnalysisResponse(BaseModel):
     team_score: int = Field(description="Team quality and experience score (1-10)", ge=1, le=10)
     product_score: int = Field(description="Product/service quality and differentiation score (1-10)", ge=1, le=10)
     financial_health_score: int = Field(description="Financial projections and health score (1-10)", ge=1, le=10)
+    
+    @field_validator('competitive_advantage', 'key_partnerships', mode='before')
+    @classmethod
+    def validate_lists(cls, v):
+        """Convert string 'NA' values to empty lists"""
+        if isinstance(v, str):
+            if v.upper() == 'NA' or v.strip() == '':
+                return []
+            # If it's a single string that's not 'NA', put it in a list
+            return [v]
+        elif isinstance(v, list):
+            # Filter out 'NA' values from lists
+            return [item for item in v if isinstance(item, str) and item.upper() != 'NA' and item.strip() != '']
+        return v if v is not None else []
     
     @field_validator('investment_score', 'market_opportunity_score', 'team_score', 'product_score', 'financial_health_score')
     @classmethod
