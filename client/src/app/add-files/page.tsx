@@ -195,7 +195,7 @@ export default function EditStartupPage() {
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent, bypassValidation = false) => {
     e.preventDefault();
     if (!selectedStartup || files.length === 0) return;
 
@@ -207,6 +207,11 @@ export default function EditStartupPage() {
       files.forEach((file) => {
         formData.append("files", file);
       });
+
+      // Add bypass validation flag if needed
+      if (bypassValidation) {
+        formData.append("bypass_validation", "true");
+      }
 
       const response = await fetch(
         `http://localhost:8000/api/add-files/${encodeURIComponent(
@@ -231,6 +236,69 @@ export default function EditStartupPage() {
           return;
         }
 
+        throw new Error(
+          errorData.detail || `Upload failed: ${response.status}`
+        );
+      }
+
+      const result = await response.json();
+
+      // Check if the response has warnings (no files saved yet)
+      if (result.has_warnings && result.warnings && !bypassValidation) {
+        setValidationError({
+          message: result.message || "File validation completed with warnings",
+          errors: [],
+          warnings: result.warnings,
+          file_analyses: [],
+        });
+        return;
+      }
+
+      setSubmissionResult(result);
+      setIsSubmitted(true);
+
+      // Refresh startup details after adding files
+      await handleSelectStartup(selectedStartup);
+
+      // Clear files after successful upload
+      setFiles([]);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to upload files");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleProceedWithWarnings = async () => {
+    if (!selectedStartup || files.length === 0) {
+      setValidationError(null);
+      return;
+    }
+
+    setValidationError(null);
+    setIsSubmitting(true);
+    setError("");
+
+    try {
+      // Create fresh FormData with bypass validation flag
+      const formData = new FormData();
+      files.forEach((file) => {
+        formData.append("files", file);
+      });
+      formData.append("bypass_validation", "true");
+
+      const response = await fetch(
+        `http://localhost:8000/api/add-files/${encodeURIComponent(
+          selectedStartup.startup_name
+        )}`,
+        {
+          method: "POST",
+          body: formData,
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
         throw new Error(
           errorData.detail || `Upload failed: ${response.status}`
         );
@@ -709,6 +777,7 @@ export default function EditStartupPage() {
       <ValidationErrorModal
         validationError={validationError}
         onClose={() => setValidationError(null)}
+        onProceedWithWarnings={handleProceedWithWarnings}
       />
     </div>
   );

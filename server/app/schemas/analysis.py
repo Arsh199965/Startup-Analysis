@@ -73,15 +73,11 @@ class LLMAnalysisResponse(BaseModel):
     """Enhanced schema for KPI-focused LLM analysis response"""
     executive_summary: str = Field(description="Brief executive summary in exactly 100 words or less, highlighting key business metrics and investment potential")
     
-    # Financial KPIs
-    financial_kpis: dict = Field(description="Financial metrics including revenue model, funding, projections, burn rate, CAC, LTV")
-    
-    # Business KPIs  
+    # Use actual KPI schemas instead of dicts
+    financial_kpis: dict = Field(description="Financial metrics including revenue model, funding, projections, burn rate, CAC, LTV, MRR, ARR")
     business_kpis: dict = Field(description="Business metrics including market size, competitive advantage, team, partnerships")
-    
-    # Traction KPIs
     traction_kpis: dict = Field(description="Traction metrics including customers, MRR, growth rate, product stage")
-    
+
     recommendations: List[str] = Field(description="List of specific, actionable recommendations for growth")
     risk_assessment: Literal['Low', 'Medium', 'High'] = Field(description="Overall risk level assessment")
     
