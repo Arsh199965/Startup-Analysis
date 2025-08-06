@@ -16,11 +16,13 @@ import {
   Eye,
   Calendar,
   User,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { FileUpload } from "@/components/ui/file-upload";
+import { EnhancedFileUpload } from "@/components/ui/enhanced-file-upload";
 import { ValidationErrorModal } from "@/components/ui/validation-error-modal";
 
 interface StartupSearchResult {
@@ -39,6 +41,7 @@ interface FileDetail {
   file_size_mb: number;
   content_type: string;
   created_at: string;
+  is_manual?: boolean;
 }
 
 interface StartupDetails {
@@ -55,6 +58,13 @@ interface StartupDetails {
   can_delete: boolean;
 }
 
+interface SubmissionMode {
+  mode: "files" | "text";
+  files: File[];
+  textContent: string;
+  documentTitle: string;
+}
+
 export default function EditStartupPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedStartup, setSelectedStartup] =
@@ -63,12 +73,20 @@ export default function EditStartupPage() {
     null
   );
   const [searchResults, setSearchResults] = useState<StartupSearchResult[]>([]);
-  const [files, setFiles] = useState<File[]>([]);
+  const [submission, setSubmission] = useState<SubmissionMode>({
+    mode: "files",
+    files: [],
+    textContent: "",
+    documentTitle: "Manual Submission",
+  });
   const [isSearching, setIsSearching] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeleting, setIsDeleting] = useState<number | null>(null);
   const [isLoadingDetails, setIsLoadingDetails] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [editingFile, setEditingFile] = useState<FileDetail | null>(null);
+  const [editingText, setEditingText] = useState("");
+  const [editingTitle, setEditingTitle] = useState("");
   const [error, setError] = useState("");
   const [submissionResult, setSubmissionResult] = useState<any>(null);
   const [validationError, setValidationError] = useState<any>(null);
@@ -138,7 +156,10 @@ export default function EditStartupPage() {
   };
 
   const handleFileSelect = (selectedFiles: File[]) => {
-    setFiles(selectedFiles);
+    setSubmission((prev) => ({
+      ...prev,
+      files: selectedFiles,
+    }));
   };
 
   const handleDeleteFile = async (fileId: number, fileName: string) => {
@@ -197,80 +218,122 @@ export default function EditStartupPage() {
 
   const handleSubmit = async (e: React.FormEvent, bypassValidation = false) => {
     e.preventDefault();
-    if (!selectedStartup || files.length === 0) return;
+    if (
+      !selectedStartup ||
+      (submission.mode === "files" && submission.files.length === 0) ||
+      (submission.mode === "text" && !submission.textContent.trim())
+    )
+      return;
 
     setIsSubmitting(true);
     setError("");
 
     try {
-      const formData = new FormData();
-      files.forEach((file) => {
-        formData.append("files", file);
-      });
+      if (submission.mode === "text") {
+        // Submit text content to add-text endpoint
+        const textData = {
+          startup_id: startupDetails?.startup_id,
+          text_content: submission.textContent,
+          document_title: submission.documentTitle,
+        };
 
-      // Add bypass validation flag if needed
-      if (bypassValidation) {
-        formData.append("bypass_validation", "true");
-      }
-
-      const response = await fetch(
-        `http://localhost:8000/api/add-files/${encodeURIComponent(
-          selectedStartup.startup_name
-        )}`,
-        {
+        const response = await fetch("http://localhost:8000/api/add-text", {
           method: "POST",
-          body: formData,
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(textData),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.detail || "Failed to add text content");
         }
-      );
 
-      if (!response.ok) {
-        const errorData = await response.json();
+        const result = await response.json();
+        setSubmissionResult(result);
+        setIsSubmitted(true);
+      } else {
+        // Handle file uploads
+        const formData = new FormData();
+        submission.files.forEach((file) => {
+          formData.append("files", file);
+        });
 
-        // Handle file validation errors (422)
-        if (
-          response.status === 422 &&
-          errorData.detail &&
-          typeof errorData.detail === "object"
-        ) {
-          setValidationError(errorData.detail);
+        // Add bypass validation flag if needed
+        if (bypassValidation) {
+          formData.append("bypass_validation", "true");
+        }
+
+        const response = await fetch(
+          `http://localhost:8000/api/add-files/${encodeURIComponent(
+            selectedStartup.startup_name
+          )}`,
+          {
+            method: "POST",
+            body: formData,
+          }
+        );
+
+        if (!response.ok) {
+          const errorData = await response.json();
+
+          // Handle file validation errors (422)
+          if (
+            response.status === 422 &&
+            errorData.detail &&
+            typeof errorData.detail === "object"
+          ) {
+            setValidationError(errorData.detail);
+            return;
+          }
+
+          throw new Error(
+            errorData.detail || `Upload failed: ${response.status}`
+          );
+        }
+
+        const result = await response.json();
+
+        // Check if the response has warnings (no files saved yet)
+        if (result.has_warnings && result.warnings && !bypassValidation) {
+          setValidationError({
+            message:
+              result.message || "File validation completed with warnings",
+            errors: [],
+            warnings: result.warnings,
+            file_analyses: [],
+          });
           return;
         }
 
-        throw new Error(
-          errorData.detail || `Upload failed: ${response.status}`
-        );
+        setSubmissionResult(result);
+        setIsSubmitted(true);
       }
-
-      const result = await response.json();
-
-      // Check if the response has warnings (no files saved yet)
-      if (result.has_warnings && result.warnings && !bypassValidation) {
-        setValidationError({
-          message: result.message || "File validation completed with warnings",
-          errors: [],
-          warnings: result.warnings,
-          file_analyses: [],
-        });
-        return;
-      }
-
-      setSubmissionResult(result);
-      setIsSubmitted(true);
 
       // Refresh startup details after adding files
       await handleSelectStartup(selectedStartup);
 
-      // Clear files after successful upload
-      setFiles([]);
+      // Clear submission state after successful upload
+      setSubmission({
+        mode: "files",
+        files: [],
+        textContent: "",
+        documentTitle: "Manual Submission",
+      });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to upload files");
+      setError(err instanceof Error ? err.message : "Failed to submit");
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const handleProceedWithWarnings = async () => {
-    if (!selectedStartup || files.length === 0) {
+    if (
+      !selectedStartup ||
+      (submission.mode === "files" && submission.files.length === 0) ||
+      (submission.mode === "text" && !submission.textContent.trim())
+    ) {
       setValidationError(null);
       return;
     }
@@ -282,7 +345,7 @@ export default function EditStartupPage() {
     try {
       // Create fresh FormData with bypass validation flag
       const formData = new FormData();
-      files.forEach((file) => {
+      submission.files.forEach((file) => {
         formData.append("files", file);
       });
       formData.append("bypass_validation", "true");
@@ -311,10 +374,15 @@ export default function EditStartupPage() {
       // Refresh startup details after adding files
       await handleSelectStartup(selectedStartup);
 
-      // Clear files after successful upload
-      setFiles([]);
+      // Clear submission state after successful upload
+      setSubmission({
+        mode: "files",
+        files: [],
+        textContent: "",
+        documentTitle: "Manual Submission",
+      });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to upload files");
+      setError(err instanceof Error ? err.message : "Failed to submit");
     } finally {
       setIsSubmitting(false);
     }
@@ -325,10 +393,82 @@ export default function EditStartupPage() {
     setSelectedStartup(null);
     setStartupDetails(null);
     setSearchResults([]);
-    setFiles([]);
+    setSubmission({
+      mode: "files",
+      files: [],
+      textContent: "",
+      documentTitle: "Manual Submission",
+    });
     setIsSubmitted(false);
     setSubmissionResult(null);
     setError("");
+  };
+
+  // Functions for editing manual files
+  const handleEditManualFile = async (file: FileDetail) => {
+    if (!file.is_manual) {
+      alert("This file is not a manual file and cannot be edited as text.");
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        `http://localhost:8000/api/startup/file/${file.id}/text`
+      );
+      if (!response.ok) {
+        throw new Error("Failed to fetch file content");
+      }
+
+      const fileData = await response.json();
+      setEditingFile(file);
+      setEditingText(fileData.text_content || "");
+      setEditingTitle(fileData.original_name || "Manual Submission");
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Failed to load file for editing"
+      );
+    }
+  };
+
+  const handleSaveManualFile = async () => {
+    if (!editingFile || !editingText.trim()) return;
+
+    try {
+      const formData = new FormData();
+      formData.append("text_content", editingText);
+      formData.append("document_title", editingTitle);
+
+      const response = await fetch(
+        `http://localhost:8000/api/startup/file/${editingFile.id}/text`,
+        {
+          method: "PUT",
+          body: formData,
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || "Failed to update file");
+      }
+
+      // Refresh startup details
+      if (selectedStartup) {
+        await handleSelectStartup(selectedStartup);
+      }
+
+      // Close editing modal
+      setEditingFile(null);
+      setEditingText("");
+      setEditingTitle("");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to save file");
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setEditingFile(null);
+    setEditingText("");
+    setEditingTitle("");
   };
 
   const formatDate = (dateString: string) => {
@@ -638,17 +778,35 @@ export default function EditStartupPage() {
                                 {getFileIcon(file.content_type)}
                               </div>
                               <div>
-                                <h4 className="font-medium text-white">
-                                  {file.original_name}
-                                </h4>
+                                <div className="flex items-center gap-2">
+                                  <h4 className="font-medium text-white">
+                                    {file.original_name}
+                                  </h4>
+                                  {file.is_manual && (
+                                    <span className="px-2 py-1 text-xs bg-blue-500/20 text-blue-400 border border-blue-500/30 rounded-full">
+                                      Manual
+                                    </span>
+                                  )}
+                                </div>
                                 <p className="text-sm text-gray-400">
-                                  {file.file_size_mb} MB • Uploaded{" "}
+                                  {file.file_size_mb} MB •{" "}
+                                  {file.is_manual ? "Created" : "Uploaded"}{" "}
                                   {formatDate(file.created_at)}
                                 </p>
                               </div>
                             </div>
 
                             <div className="flex items-center gap-2">
+                              {file.is_manual && (
+                                <Button
+                                  onClick={() => handleEditManualFile(file)}
+                                  variant="outline"
+                                  size="sm"
+                                  className="border-blue-600 text-blue-400 hover:bg-blue-900/20 hover:text-blue-300"
+                                >
+                                  <Edit className="w-4 h-4" />
+                                </Button>
+                              )}
                               <Button
                                 onClick={() =>
                                   handleDeleteFile(file.id, file.original_name)
@@ -706,14 +864,18 @@ export default function EditStartupPage() {
 
                       <form onSubmit={handleSubmit} className="space-y-4">
                         <div className="bg-gray-800/30 border border-gray-700 rounded-xl p-1 backdrop-blur-sm">
-                          <FileUpload
-                            onFileSelect={handleFileSelect}
+                          <EnhancedFileUpload
+                            onSubmissionChange={setSubmission}
                             maxFiles={3}
                             currentFiles={startupDetails.total_files}
+                            initialMode={submission.mode}
                           />
                         </div>
 
-                        {files.length > 0 && (
+                        {((submission.mode === "files" &&
+                          submission.files.length > 0) ||
+                          (submission.mode === "text" &&
+                            submission.textContent.trim())) && (
                           <Button
                             type="submit"
                             disabled={isSubmitting}
@@ -732,9 +894,11 @@ export default function EditStartupPage() {
                             ) : (
                               <>
                                 <Upload className="w-6 h-6 mr-2" />
-                                Add {files.length} File
-                                {files.length !== 1 ? "s" : ""} to{" "}
-                                {startupDetails.startup_name}
+                                {submission.mode === "files"
+                                  ? `Add ${submission.files.length} File${
+                                      submission.files.length !== 1 ? "s" : ""
+                                    } to ${startupDetails.startup_name}`
+                                  : `Add Text Content to ${startupDetails.startup_name}`}
                               </>
                             )}
                           </Button>
@@ -772,6 +936,84 @@ export default function EditStartupPage() {
           )}
         </motion.div>
       </div>
+
+      {/* Manual File Editing Modal */}
+      <AnimatePresence>
+        {editingFile && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            onClick={handleCancelEdit}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-gray-900 border border-gray-700 rounded-xl p-6 w-full max-w-4xl max-h-[80vh] overflow-hidden"
+            >
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-xl font-bold text-white">
+                  Edit Manual File: {editingFile.original_name}
+                </h3>
+                <Button
+                  onClick={handleCancelEdit}
+                  variant="outline"
+                  size="sm"
+                  className="border-gray-600 text-gray-400 hover:bg-gray-800"
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <Label className="text-white text-sm font-medium">
+                    Document Title
+                  </Label>
+                  <Input
+                    value={editingTitle}
+                    onChange={(e) => setEditingTitle(e.target.value)}
+                    className="mt-1 bg-gray-800 border-gray-700 text-white"
+                    placeholder="Enter document title"
+                  />
+                </div>
+
+                <div className="flex-1">
+                  <Label className="text-white text-sm font-medium">
+                    Text Content
+                  </Label>
+                  <textarea
+                    value={editingText}
+                    onChange={(e) => setEditingText(e.target.value)}
+                    className="mt-1 w-full h-96 bg-gray-800 border border-gray-700 rounded-lg p-3 text-white resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Enter the text content for your document..."
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-3 mt-6">
+                <Button
+                  onClick={handleCancelEdit}
+                  variant="outline"
+                  className="border-gray-600 text-gray-400 hover:bg-gray-800"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleSaveManualFile}
+                  disabled={!editingText.trim()}
+                  className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white disabled:opacity-50"
+                >
+                  Save Changes
+                </Button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Validation Error Modal */}
       <ValidationErrorModal

@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, Text, ForeignKey, BigInteger
+from sqlalchemy import Column, Integer, String, DateTime, Text, ForeignKey, BigInteger, Boolean
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.core.database import Base
@@ -28,6 +28,8 @@ class StartupFile(Base):
     file_path = Column(String, nullable=False)
     file_size = Column(BigInteger, nullable=False)
     content_type = Column(String)
+    is_manual = Column(Boolean, default=False)  # Track if PDF was generated from text
+    original_text = Column(Text, nullable=True)  # Store original text for manual files
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     
     # Relationship to startup

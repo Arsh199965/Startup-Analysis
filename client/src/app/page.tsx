@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import {
@@ -15,14 +16,23 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { FileUpload } from "@/components/ui/file-upload";
+import {
+  EnhancedFileUpload,
+  SubmissionMode,
+} from "@/components/ui/enhanced-file-upload";
 import { ValidationErrorModal } from "@/components/ui/validation-error-modal";
 
 export default function Home() {
+  const router = useRouter();
   const [formData, setFormData] = useState({
     startupName: "",
     submitterName: "",
-    files: [] as File[],
+  });
+  const [submission, setSubmission] = useState<SubmissionMode>({
+    mode: "files",
+    files: [],
+    textContent: "",
+    documentTitle: "Manual Submission",
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
@@ -35,60 +45,94 @@ export default function Home() {
     }));
   };
 
-  const handleFileSelect = (files: File[]) => {
-    setFormData((prev) => ({
-      ...prev,
-      files,
-    }));
-  };
-
   const handleSubmit = async (e: React.FormEvent, bypassValidation = false) => {
     e.preventDefault();
     setIsSubmitting(true);
 
-    // Create FormData object for file upload
-    const formDataToSend = new FormData();
-    formDataToSend.append("startup_name", formData.startupName);
-    formDataToSend.append("submitter_name", formData.submitterName);
-
-    // Add bypass validation flag if needed
-    if (bypassValidation) {
-      formDataToSend.append("bypass_validation", "true");
-    }
-
-    // Append all files with the same field name 'files'
-    formData.files.forEach((file) => {
-      formDataToSend.append("files", file);
-    });
-
     try {
-      // Submit to FastAPI backend
-      const response = await fetch("http://localhost:8000/api/submit-startup", {
-        method: "POST",
-        body: formDataToSend,
-      });
+      let result;
 
-      if (!response.ok) {
-        const errorData = await response.json();
+      if (submission.mode === "text") {
+        // Submit text content to the text endpoint
+        const formDataToSend = new FormData();
+        formDataToSend.append("startup_name", formData.startupName);
+        formDataToSend.append("submitter_name", formData.submitterName);
+        formDataToSend.append("text_content", submission.textContent);
+        formDataToSend.append("document_title", submission.documentTitle);
 
-        // Handle file validation errors (422)
-        if (
-          response.status === 422 &&
-          errorData.detail &&
-          typeof errorData.detail === "object"
-        ) {
-          setValidationError(errorData.detail);
-          return;
+        if (bypassValidation) {
+          formDataToSend.append("bypass_validation", "true");
         }
 
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const response = await fetch(
+          "http://localhost:8000/api/submit-startup-text",
+          {
+            method: "POST",
+            body: formDataToSend,
+          }
+        );
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(
+            errorData.detail || "Failed to submit startup information"
+          );
+        }
+
+        result = await response.json();
+      } else {
+        // Create FormData object for file upload
+        const formDataToSend = new FormData();
+        formDataToSend.append("startup_name", formData.startupName);
+        formDataToSend.append("submitter_name", formData.submitterName);
+
+        // Add bypass validation flag if needed
+        if (bypassValidation) {
+          formDataToSend.append("bypass_validation", "true");
+        }
+
+        // Append all files with the same field name 'files'
+        submission.files.forEach((file) => {
+          formDataToSend.append("files", file);
+        });
+
+        // Submit to FastAPI backend
+        const response = await fetch(
+          "http://localhost:8000/api/submit-startup",
+          {
+            method: "POST",
+            body: formDataToSend,
+          }
+        );
+
+        if (!response.ok) {
+          const errorData = await response.json();
+
+          // Handle file validation errors (422)
+          if (
+            response.status === 422 &&
+            errorData.detail &&
+            typeof errorData.detail === "object"
+          ) {
+            setValidationError(errorData.detail);
+            return;
+          }
+
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        result = await response.json();
       }
 
-      const result = await response.json();
       console.log("Submission successful:", result);
 
-      // Check if the response has warnings (no files saved yet)
-      if (result.has_warnings && result.warnings && !bypassValidation) {
+      // Check if the response has warnings (no files saved yet) - only for file mode
+      if (
+        submission.mode === "files" &&
+        result.has_warnings &&
+        result.warnings &&
+        !bypassValidation
+      ) {
         setValidationError({
           message: result.message || "File validation completed with warnings",
           errors: [],
@@ -113,7 +157,8 @@ export default function Home() {
     if (
       !formData.startupName ||
       !formData.submitterName ||
-      formData.files.length === 0
+      (submission.mode === "files" && submission.files.length === 0) ||
+      (submission.mode === "text" && !submission.textContent.trim())
     ) {
       setValidationError(null);
       return;
@@ -123,32 +168,56 @@ export default function Home() {
     setIsSubmitting(true);
 
     try {
-      // Create fresh FormData with bypass validation flag
-      const formDataToSend = new FormData();
-      formDataToSend.append("startup_name", formData.startupName);
-      formDataToSend.append("submitter_name", formData.submitterName);
-      formDataToSend.append("bypass_validation", "true");
+      if (submission.mode === "text") {
+        // For text mode, use the text submission endpoint
+        const formDataToSend = new FormData();
+        formDataToSend.append("startup_name", formData.startupName);
+        formDataToSend.append("submitter_name", formData.submitterName);
+        formDataToSend.append("text_content", submission.textContent);
+        formDataToSend.append("bypass_validation", "true");
 
-      // Append all files
-      formData.files.forEach((file) => {
-        formDataToSend.append("files", file);
-      });
+        const response = await fetch("/api/submit-startup-text", {
+          method: "POST",
+          body: formDataToSend,
+        });
 
-      // Submit to FastAPI backend
-      const response = await fetch("http://localhost:8000/api/submit-startup", {
-        method: "POST",
-        body: formDataToSend,
-      });
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const result = await response.json();
+        router.push(`/analysis?id=${result.submission_id}`);
+      } else {
+        // For file mode, use the original file submission endpoint
+        const formDataToSend = new FormData();
+        formDataToSend.append("startup_name", formData.startupName);
+        formDataToSend.append("submitter_name", formData.submitterName);
+        formDataToSend.append("bypass_validation", "true");
+
+        // Append all files
+        submission.files.forEach((file) => {
+          formDataToSend.append("files", file);
+        });
+
+        // Submit to FastAPI backend
+        const response = await fetch(
+          "http://localhost:8000/api/submit-startup",
+          {
+            method: "POST",
+            body: formDataToSend,
+          }
+        );
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const result = await response.json();
+        console.log("Submission successful:", result);
+
+        setIsSubmitted(true);
       }
-
-      const result = await response.json();
-      console.log("Submission successful:", result);
-
-      setIsSubmitted(true);
     } catch (error) {
       console.error("Error submitting form:", error);
       alert(
@@ -210,7 +279,13 @@ export default function Home() {
             <Button
               onClick={() => {
                 setIsSubmitted(false);
-                setFormData({ startupName: "", submitterName: "", files: [] });
+                setFormData({ startupName: "", submitterName: "" });
+                setSubmission({
+                  mode: "files",
+                  files: [],
+                  textContent: "",
+                  documentTitle: "Manual Submission",
+                });
               }}
               className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-8 py-3 text-lg font-semibold shadow-lg shadow-blue-500/25 transition-all duration-300"
             >
@@ -353,14 +428,17 @@ export default function Home() {
               >
                 <Label className="text-white text-lg font-medium flex items-center gap-2">
                   <FileText className="w-5 h-5 text-green-400" />
-                  Company Documents (Up to 3 files)
+                  Company Documents
                 </Label>
                 <p className="text-sm text-gray-400 mb-3">
-                  Upload your cap table, financial statements, tear sheet, pitch
-                  deck, or other relevant documents
+                  Upload files or enter text manually to describe your startup
                 </p>
                 <div className="bg-gray-800/30 border border-gray-700 rounded-xl p-1 backdrop-blur-sm">
-                  <FileUpload onFileSelect={handleFileSelect} maxFiles={3} />
+                  <EnhancedFileUpload
+                    onSubmissionChange={setSubmission}
+                    maxFiles={3}
+                    initialMode={submission.mode}
+                  />
                 </div>
               </motion.div>
 
@@ -376,7 +454,11 @@ export default function Home() {
                   disabled={
                     isSubmitting ||
                     !formData.startupName ||
-                    !formData.submitterName
+                    !formData.submitterName ||
+                    (submission.mode === "files" &&
+                      submission.files.length === 0) ||
+                    (submission.mode === "text" &&
+                      !submission.textContent.trim())
                   }
                   className="w-full h-16 text-lg font-semibold bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 group shadow-lg shadow-blue-500/25"
                 >
